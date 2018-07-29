@@ -17,7 +17,6 @@ namespace Orion.Window
     {
         private string sHeaderUOL;
         private string sDataUOL;
-        private PackStreamVerBase pStream; //TODO: Do we need to store this into memory, or is it entirely useless after tree iteration?
         private PackNodeList pNodeList;
         private MemoryMappedFile pDataMappedMemFile;
 
@@ -38,12 +37,11 @@ namespace Orion.Window
             this.sHeaderUOL = "";
             this.sDataUOL = "";
 
-            this.pStream = null;
             this.pNodeList = null;
             this.pDataMappedMemFile = null;
         }
 
-        private void InitializeTree()
+        private void InitializeTree(PackStreamVerBase pStream)
         {
             // Insert the root node (file)
             string[] aPath = this.sHeaderUOL.Replace(".m2h", "").Split('/');
@@ -219,7 +217,7 @@ namespace Orion.Window
 
         private void OnLoadFile(object sender, EventArgs e)
         {
-            if (this.pStream != null && this.pNodeList != null)
+            if (this.pNodeList != null)
             {
                 NotifyMessage("Please unload the current file first.", MessageBoxIcon.Information);
                 return;
@@ -239,19 +237,20 @@ namespace Orion.Window
                 this.sHeaderUOL = sUOL.EndsWith(".m2h") ? sUOL : sUOL.Replace(".m2d", ".m2h");
                 this.sDataUOL = sUOL.EndsWith(".m2h") ? sUOL.Replace(".m2h", ".m2d") : sUOL;
 
+                PackStreamVerBase pStream;
                 using (BinaryReader pHeader = new BinaryReader(File.OpenRead(this.sHeaderUOL)))
                 {
                     // Construct a new packed stream from the header data
-                    this.pStream = PackVer.CreatePackVer(pHeader);
+                    pStream = PackVer.CreatePackVer(pHeader);
 
                     // Insert a collection containing the file list information [index,hash,name]
-                    this.pStream.GetFileList().Clear();
-                    this.pStream.GetFileList().AddRange(PackFileEntry.CreateFileList(Encoding.UTF8.GetString(CryptoMan.DecryptFileList(this.pStream, pHeader.BaseStream))));
+                    pStream.GetFileList().Clear();
+                    pStream.GetFileList().AddRange(PackFileEntry.CreateFileList(Encoding.UTF8.GetString(CryptoMan.DecryptFileList(pStream, pHeader.BaseStream))));
                     // Make the collection of files sorted by their FileIndex for easy fetching
-                    this.pStream.GetFileList().Sort();
+                    pStream.GetFileList().Sort();
                     
                     // Load the file allocation table and assign each file header to the entry within the list
-                    byte[] pFileTable = CryptoMan.DecryptFileTable(this.pStream, pHeader.BaseStream);
+                    byte[] pFileTable = CryptoMan.DecryptFileTable(pStream, pHeader.BaseStream);
                     using (MemoryStream pTableStream = new MemoryStream(pFileTable))
                     {
                         using (BinaryReader pReader = new BinaryReader(pTableStream))
@@ -261,25 +260,25 @@ namespace Orion.Window
                             switch (pStream.GetVer())
                             {
                                 case PackVer.MS2F:
-                                    for (ulong i = 0; i < this.pStream.GetFileListCount(); i++)
+                                    for (ulong i = 0; i < pStream.GetFileListCount(); i++)
                                     {
                                         pFileHeader = PackFileHeaderVer1.ParseHeader(pReader);
-                                        this.pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
+                                        pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
                                     }
                                     break;
                                 case PackVer.NS2F:
-                                    for (ulong i = 0; i < this.pStream.GetFileListCount(); i++)
+                                    for (ulong i = 0; i < pStream.GetFileListCount(); i++)
                                     {
                                         pFileHeader = PackFileHeaderVer2.ParseHeader(pReader);
-                                        this.pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
+                                        pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
                                     }
                                     break;
                                 case PackVer.OS2F:
                                 case PackVer.PS2F:
-                                    for (ulong i = 0; i < this.pStream.GetFileListCount(); i++)
+                                    for (ulong i = 0; i < pStream.GetFileListCount(); i++)
                                     {
                                         pFileHeader = PackFileHeaderVer3.ParseHeader(pReader, pStream.GetVer());
-                                        this.pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
+                                        pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
                                     }
                                     break;
                             }
@@ -289,23 +288,91 @@ namespace Orion.Window
 
                 this.pDataMappedMemFile = MemoryMappedFile.CreateFromFile(this.sDataUOL);
 
-                InitializeTree();
+                InitializeTree(pStream);
             }
         }
 
         private void OnReloadFile(object sender, EventArgs e)
         {
-            if (this.pStream != null && this.pNodeList != null)
+            if (this.pNodeList != null)
             {
-                pTreeView.Nodes.Clear();
-                pTreeView.Refresh();
+                PackStreamVerBase pStream;
 
-                InitializeTree();
+                if (this.pTreeView.Nodes.Count > 0)
+                {
+                    pStream = this.pTreeView.Nodes[0].Tag as PackStreamVerBase;
+                    if (pStream == null)
+                    {
+                        return;
+                    }
 
-                this.pEntryValue.Text = "Packed Data File";
+                    this.pTreeView.Nodes.Clear();
+                    this.pTreeView.Refresh();
+
+                    InitializeTree(pStream);
+                    UpdatePanel("", null);
+
+                    this.pEntryValue.Text = "Empty";
+                }
             } else
             {
                 NotifyMessage("There is no package to be reloaded.", MessageBoxIcon.Warning);
+            }
+        }
+
+        private void OnSaveFile(object sender, EventArgs e)
+        {
+            PackNode pNode = this.pTreeView.SelectedNode as PackNode;
+
+            if (pNode != null && pNode.Tag is PackStreamVerBase)
+            {
+                SaveFileDialog pDialog = new SaveFileDialog
+                {
+                    Title = "Select the destination to save the file",
+                    Filter = "MS2 File|*.m2h;*.m2d"
+                };
+
+                if (pDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string sPath = Dir_BackSlashToSlash(pDialog.FileName);
+                    string sDir = sPath.Substring(0, sPath.LastIndexOf('/') + 1);
+                    string sFileName = sPath.Replace(sDir, "").Split('.')[0];
+
+                    // TODO: Saving Process for <sFileName>.m2h
+                        // -> Iterate tree
+                            // -> Construct a list of PackFileEntry with updated Name(path) and Index(file index)
+                            // -> If data loaded into pNode.Data (possible changes):
+                                // -> Re-calculate sizes for the entry's FileHeader
+                        // -> Iterate list of file entries
+                            // -> Construct a new comma-separated, newline-separated string: index,<hash>?,<name>\n
+                        // -> Compress the string with zlib
+                        // -> Encrypt the string with AES
+                        // -> Encode the string in Base64
+                        // -> Re-calculate file list header sizes
+                        // -> Save encoded header data to file
+                        // -> Create new memory write stream
+                            // -> Iterate list of file entries
+                                // -> Encode the re-calculated sizes of each file header
+                        // -> Copy stream to a byte-array block
+                        // -> Compress the block with zlib
+                        // -> Encrypt the block with AES
+                        // -> Encode the block into Base64
+                        // -> Save encoded block data to file
+
+                    // TODO: Saving Process for <sFileName>.m2d
+                        // -> Iterate file headers of each entry
+                            // -> If data was changed:
+                                // -> Use block decoded from node
+                                // -> Compress block with zlib
+                                // -> Encrypt block with AES
+                                // -> Encode block with Base64
+                            // -> If data was unchanged:
+                                // -> Read block from memory map
+                            // -> Save encoded block data to file
+                }
+            } else
+            {
+                NotifyMessage("Please select the file to save.", MessageBoxIcon.Information);
             }
         }
 
@@ -344,7 +411,7 @@ namespace Orion.Window
 
         private void OnUnloadFile(object sender, EventArgs e)
         {
-            if (this.pStream != null && this.pNodeList != null)
+            if (this.pNodeList != null)
             {
                 pTreeView.Nodes.Clear();
 
@@ -353,9 +420,6 @@ namespace Orion.Window
 
                 this.sHeaderUOL = "";
                 this.sDataUOL = "";
-
-                this.pStream.GetFileList().Clear();
-                this.pStream = null;
 
                 if (this.pDataMappedMemFile != null)
                 {

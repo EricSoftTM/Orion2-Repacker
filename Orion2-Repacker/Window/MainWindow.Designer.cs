@@ -155,6 +155,7 @@ namespace Orion.Window
             this.pSaveMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
             this.pSaveMenuItem.Size = new System.Drawing.Size(180, 22);
             this.pSaveMenuItem.Text = "Save";
+            this.pSaveMenuItem.Click += new System.EventHandler(this.OnSaveFile);
             // 
             // pReloadMenuItem
             // 
