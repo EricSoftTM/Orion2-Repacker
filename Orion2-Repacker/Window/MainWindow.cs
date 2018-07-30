@@ -453,15 +453,16 @@ namespace Orion.Window
         {
             this.pEntryValue.Text = string.Format("{0} File", sExtension.ToUpper());
 
-            this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("xml"));
+            this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua")
+                || sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
+                || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"));
             this.panel1.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
 
-            if (sExtension.Equals("ini"))
+            if (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua"))
             {
-                string sOutput = Encoding.UTF8.GetString(pBuffer);
-
-                this.pTextData.Text = sOutput;
-            } else if (sExtension.Equals("xml"))
+                this.pTextData.Text = Encoding.UTF8.GetString(pBuffer);
+            } else if (sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
+                || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"))
             {
                 string sOutput = Encoding.UTF8.GetString(pBuffer);
 
@@ -486,7 +487,15 @@ namespace Orion.Window
             {
                 this.pTextData.Visible = false;
 
-                // TODO: PNG, DDS, NIF, KF(?), NT(?), FLAT
+                /*
+                 * TODO:
+                 * *.usm files (NOTE: unable to access raw data due to decryption error, fix bug with usm data)
+                 * *.nif, *.kf, and *.kfm files
+                 * Shaders/*.fxo - directx shader files?
+                 * PrecomputedTerrain/*.tok - mesh3d files? token files?
+                 * Gfx/*.gfx - graphics gen files?
+                 * Precompiled/luapack.o - object files?
+                */
             }
 
             RenderImageData();
