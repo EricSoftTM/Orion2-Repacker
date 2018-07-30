@@ -1,5 +1,6 @@
 ﻿using Orion.Crypto.Common;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Orion.Crypto.Stream
 {
@@ -19,5 +20,17 @@ namespace Orion.Crypto.Stream
         ulong GetFileListCount(); // The total count of files within the data file
 
         List<PackFileEntry> GetFileList(); // Represents a list of fileinfo containers (<Index>,<Hash>,<Name>)
+
+        void Encode(BinaryWriter pWriter);
+
+        void SetCompressedHeaderSize(ulong uCompressed);
+        void SetEncodedHeaderSize(ulong uEncoded);
+        void SetHeaderSize(ulong uSize);
+
+        void SetCompressedDataSize(ulong uCompressed);
+        void SetEncodedDataSize(ulong uEncoded);
+        void SetDataSize(ulong uSize);
+
+        void SetFileListCount(ulong uCount);
     }
 }

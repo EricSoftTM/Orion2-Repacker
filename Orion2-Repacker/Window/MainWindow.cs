@@ -2,6 +2,7 @@
 using Orion.Crypto.Common;
 using Orion.Crypto.Stream;
 using Orion.Crypto.Stream.DDS;
+using Orion.Crypto.Stream.zlib;
 using Orion.Window.Common;
 using System;
 using System.Collections.Generic;
@@ -320,6 +321,7 @@ namespace Orion.Window
             }
         }
 
+        // TODO: Implement progress bar status, improve speed & efficiency if at all possible.
         private void OnSaveFile(object sender, EventArgs e)
         {
             PackNode pNode = this.pTreeView.SelectedNode as PackNode;
@@ -338,37 +340,72 @@ namespace Orion.Window
                     string sDir = sPath.Substring(0, sPath.LastIndexOf('/') + 1);
                     string sFileName = sPath.Replace(sDir, "").Split('.')[0];
 
-                    // TODO: Saving Process for <sFileName>.m2h
-                        // -> Iterate tree
-                            // -> Construct a list of PackFileEntry with updated Name(path) and Index(file index)
-                            // -> If data loaded into pNode.Data (possible changes):
-                                // -> Re-calculate sizes for the entry's FileHeader
-                        // -> Iterate list of file entries
-                            // -> Construct a new comma-separated, newline-separated string: index,<hash>?,<name>\n
-                        // -> Compress the string with zlib
-                        // -> Encrypt the string with AES
-                        // -> Encode the string in Base64
-                        // -> Re-calculate file list header sizes
-                        // -> Save encoded header data to file
-                        // -> Create new memory write stream
-                            // -> Iterate list of file entries
-                                // -> Encode the re-calculated sizes of each file header
-                        // -> Copy stream to a byte-array block
-                        // -> Compress the block with zlib
-                        // -> Encrypt the block with AES
-                        // -> Encode the block into Base64
-                        // -> Save encoded block data to file
+                    PackStreamVerBase pStream = pNode.Tag as PackStreamVerBase;
+                    if (pStream == null)
+                    {
+                        return;
+                    }
 
-                    // TODO: Saving Process for <sFileName>.m2d
-                        // -> Iterate file headers of each entry
-                            // -> If data was changed:
-                                // -> Use block decoded from node
-                                // -> Compress block with zlib
-                                // -> Encrypt block with AES
-                                // -> Encode block with Base64
-                            // -> If data was unchanged:
-                                // -> Read block from memory map
-                            // -> Save encoded block data to file
+                    // Re-calculate the file list in case of index removal
+                    pStream.GetFileList().Sort();
+
+                    // Save the data blocks to file and re-calculate all entries
+                    SaveData(sDir + sFileName + ".m2d", pStream.GetFileList());
+
+                    // Declare the new file count (header update)
+                    uint dwFileCount = (uint)pStream.GetFileList().Count;
+
+                    // Construct a raw string containing the new file list information
+                    string sFileList = "";
+                    foreach (PackFileEntry pEntry in pStream.GetFileList())
+                    {
+                        sFileList += pEntry.ToString();
+                    }
+
+                    // Encrypt the file list and output the new header sizes (header update)
+                    uint uHeaderLen, uCompressedHeaderLen, uEncodedHeaderLen;
+                    byte[] pHeader = CryptoMan.Encrypt(pStream.GetVer(), Encoding.UTF8.GetBytes(sFileList.ToCharArray()), true, out uHeaderLen, out uCompressedHeaderLen, out uEncodedHeaderLen);
+
+                    // Construct a new file allocation table
+                    byte[] pFileTable;
+                    using (MemoryStream pOutStream = new MemoryStream())
+                    {
+                        using (BinaryWriter pWriter = new BinaryWriter(pOutStream))
+                        {
+                            foreach (PackFileEntry pEntry in pStream.GetFileList())
+                            {
+                                pEntry.FileHeader.Encode(pWriter);
+                            }
+                        }
+                        pFileTable = pOutStream.ToArray();
+                    }
+
+                    // Encrypt the file table and output the new data sizes (header update)
+                    uint uDataLen, uCompressedDataLen, uEncodedDataLen;
+                    pFileTable = CryptoMan.Encrypt(pStream.GetVer(), pFileTable, true, out uDataLen, out uCompressedDataLen, out uEncodedDataLen);
+
+                    // Update all header sizes to the new file list information
+                    pStream.SetFileListCount(dwFileCount);
+                    pStream.SetHeaderSize(uHeaderLen);
+                    pStream.SetCompressedHeaderSize(uCompressedHeaderLen);
+                    pStream.SetEncodedHeaderSize(uEncodedHeaderLen);
+                    pStream.SetDataSize(uDataLen);
+                    pStream.SetCompressedDataSize(uCompressedDataLen);
+                    pStream.SetEncodedDataSize(uEncodedDataLen);
+
+                    // Write the new header data to stream
+                    using (BinaryWriter pWriter = new BinaryWriter(File.Create(sPath)))
+                    {
+                        // Encode the file version (MS2F,NS2F,etc)
+                        pWriter.Write(pStream.GetVer());
+
+                        // Encode the stream header information
+                        pStream.Encode(pWriter);
+
+                        // Encode the encrypted header and file table buffers
+                        pWriter.Write(pHeader);
+                        pWriter.Write(pFileTable);
+                    }
                 }
             } else
             {
@@ -446,6 +483,115 @@ namespace Orion.Window
                 this.pImageData.SizeMode = this.pImageData.Image.Size.Height > this.panel1.Height
                     || this.pImageData.Image.Size.Width > this.panel1.Width ? PictureBoxSizeMode.Zoom : PictureBoxSizeMode.Normal;
                 this.pImageData.Update();
+            }
+        }
+
+        private void SaveData(string sDataPath, List<PackFileEntry> aEntry)
+        {
+            List<PackFileEntry> aNewEntry = new List<PackFileEntry>();
+
+            // Declare MS2F as the initial version until specified.
+            uint uVer = PackVer.MS2F;
+            // Re-calculate all file offsets from start to finish
+            ulong uOffset = 0;
+            // Re-calculate all file indexes from start to finish
+            int nCurIndex = 1;
+
+            using (BinaryWriter pWriter = new BinaryWriter(File.Create(sDataPath)))
+            {
+                // Iterate all file entries that exist
+                foreach (PackFileEntry pEntry in aEntry)
+                {
+                    // If the entry was modified, or is new, ignore it and continue
+                    if (pEntry.Changed)
+                    {
+                        aNewEntry.Add(pEntry);
+                        aEntry.Remove(pEntry);
+                    }
+                    // If the entry is unchanged, parse the block from the original offsets
+                    else
+                    {
+                        // Make sure the entry has a parsed file header from load
+                        PackFileHeaderVerBase pHeader = pEntry.FileHeader;
+
+                        if (pHeader != null)
+                        {
+                            // Update the initial versioning before any future crypto calls
+                            if (pHeader.GetVer() != uVer)
+                            {
+                                uVer = pHeader.GetVer();
+                            }
+
+                            // Access the current encrypted block data from the memory map initially loaded
+                            using (MemoryMappedViewStream pBuffer = this.pDataMappedMemFile.CreateViewStream((long)pHeader.GetOffset(), (long)pHeader.GetEncodedFileSize()))
+                            {
+                                byte[] pSrc = new byte[pHeader.GetEncodedFileSize()];
+
+                                if ((ulong)pBuffer.Read(pSrc, 0, (int)pHeader.GetEncodedFileSize()) == pHeader.GetEncodedFileSize())
+                                {
+                                    // Modify the header's file index to the updated offset after entry changes
+                                    pHeader.SetFileIndex(nCurIndex);
+                                    // Modify the header's offset to the updated offset after entry changes
+                                    pHeader.SetOffset(uOffset);
+                                    // Write the original (completely encrypted) block of data to file
+                                    pWriter.Write(pSrc);
+
+                                    nCurIndex++;
+                                    uOffset += pHeader.GetEncodedFileSize();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Now iterate all of the new or modified entries
+                foreach (PackFileEntry pEntry in aNewEntry)
+                {
+                    PackFileHeaderVerBase pHeader = pEntry.FileHeader;
+
+                    // If the header is null (new entry), then create one
+                    if (pHeader == null)
+                    {
+                        // TODO: Real use of Compression Flags.. atm just compress everything yolo ;)
+                        switch (uVer)
+                        {
+                            case PackVer.MS2F:
+                                pHeader = PackFileHeaderVer1.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                break;
+                            case PackVer.NS2F:
+                                pHeader = PackFileHeaderVer2.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                break;
+                            case PackVer.OS2F:
+                            case PackVer.PS2F:
+                                pHeader = PackFileHeaderVer3.CreateHeader(uVer, nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                break;
+                        }
+                        // Update the entry's file header to the newly created one
+                        pEntry.FileHeader = pHeader;
+                    }
+                    else
+                    {
+                        // If the header existed already, re-calculate the file index and offset.
+                        pHeader.SetFileIndex(nCurIndex);
+                        pHeader.SetOffset(uOffset);
+                    }
+
+                    // Encrypt the new data block and output the header size data
+                    uint uLen, uCompressed, uEncoded;
+                    pWriter.Write(CryptoMan.Encrypt(uVer, pEntry.Data, pEntry.FileHeader.GetCompressionFlag() == 0xEE000009, out uLen, out uCompressed, out uEncoded));
+
+                    // Apply the file size changes from the new buffer
+                    pHeader.SetFileSize(uLen);
+                    pHeader.SetCompressedFileSize(uCompressed);
+                    pHeader.SetEncodedFileSize(uEncoded);
+
+                    nCurIndex++;
+                    uOffset += pHeader.GetEncodedFileSize();
+
+                    // Add this new entry back to the file list.
+                    aEntry.Add(pEntry);
+                    aNewEntry.Remove(pEntry);
+                }
             }
         }
 

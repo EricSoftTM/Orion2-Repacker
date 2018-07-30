@@ -38,6 +38,18 @@ namespace Orion.Crypto.Stream
             };
         }
 
+        public void Encode(BinaryWriter pWriter)
+        {
+            pWriter.Write(this.dwFileListCount);
+            pWriter.Write(this.dwReserved);
+            pWriter.Write(this.dwCompressedDataSize);
+            pWriter.Write(this.dwEncodedDataSize);
+            pWriter.Write(this.dwCompressedHeaderSize);
+            pWriter.Write(this.dwEncodedHeaderSize);
+            pWriter.Write(this.dwDataSize);
+            pWriter.Write(this.dwHeaderSize);
+        }
+
         public uint GetVer()
         {
             return uVer;//OS2F/PS2F
@@ -81,6 +93,41 @@ namespace Orion.Crypto.Stream
         public List<PackFileEntry> GetFileList()
         {
             return aFileList;
+        }
+
+        public void SetCompressedHeaderSize(ulong uCompressed)
+        {
+            this.dwCompressedHeaderSize = uCompressed;
+        }
+
+        public void SetEncodedHeaderSize(ulong uEncoded)
+        {
+            this.dwEncodedHeaderSize = uEncoded;
+        }
+
+        public void SetHeaderSize(ulong uSize)
+        {
+            this.dwHeaderSize = uSize;
+        }
+
+        public void SetCompressedDataSize(ulong uCompressed)
+        {
+            this.dwCompressedDataSize = uCompressed;
+        }
+
+        public void SetEncodedDataSize(ulong uEncoded)
+        {
+            this.dwEncodedDataSize = uEncoded;
+        }
+
+        public void SetDataSize(ulong uSize)
+        {
+            this.dwDataSize = uSize;
+        }
+
+        public void SetFileListCount(ulong uCount)
+        {
+            this.dwFileListCount = (uint) uCount;
         }
     }
 }

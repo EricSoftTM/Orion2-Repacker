@@ -11,6 +11,8 @@ namespace Orion.Crypto.Common
         public string Name { get; set; }
         public string TreeName { get; set; }
         public PackFileHeaderVerBase FileHeader { get; set; }
+        public byte[] Data { get; set; }
+        public bool Changed { get; set; }
 
         public int CompareTo(PackFileEntry pObj)
         {
@@ -21,7 +23,11 @@ namespace Orion.Crypto.Common
 
         public override string ToString()
         {
-            return string.Format("Index {0}: {1} (Hash: {2})", Index, Name, Hash);
+            if (string.IsNullOrEmpty(Hash))
+            {
+                return string.Format("{0},{1}\r\n", Index, Name);
+            }
+            return string.Format("{0},{1},{2}\r\n", Index, Hash, Name);
         }
 
         public static List<PackFileEntry> CreateFileList(string sFileList)

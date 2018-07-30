@@ -55,12 +55,6 @@ namespace Orion.Crypto
 
                     if ((ulong)pBuffer.Read(pSrc, 0, (int)pHeader.GetEncodedFileSize()) == pHeader.GetEncodedFileSize())
                     {
-                        /*bool bCompressed = pHeader.GetEncodedFileSize() != pHeader.GetCompressedFileSize();
-                        if (bCompressed)
-                        {
-                            bCompressed &= (pHeader.GetCompressionFlag() == 0xEE000009);
-                        }*/
-
                         return Decrypt(pHeader.GetVer(), (uint)pHeader.GetEncodedFileSize(), (uint)pHeader.GetCompressedFileSize(), pHeader.GetCompressionFlag() == 0xEE000009, pSrc);
                     }
                 }
@@ -85,10 +79,40 @@ namespace Orion.Crypto
             if (bCompressed)
             {
                 return ZlibStream.UncompressBuffer(pDecrypted);
-            } else
+            }
+            else
             {
                 return pDecrypted;
             }
+        }
+
+        // Encryption Routine: Zlib -> AES -> Base64
+        public static byte[] Encrypt(uint uVer, byte[] pSrc, bool bCompressed, out uint uLen, out uint uLenCompressed, out uint uLenEncoded)
+        {
+            byte[] aKey;
+            byte[] aIV;
+
+            uLen = (uint) pSrc.Length;
+
+            byte[] pEncrypted;
+            if (bCompressed)
+            {
+                pEncrypted = ZlibStream.CompressBuffer(pSrc);
+            } else
+            {
+                pEncrypted = new byte[uLen];
+                Buffer.BlockCopy(pSrc, 0, pEncrypted, 0, (int)uLen);
+            }
+            uLenCompressed = (uint) pEncrypted.Length;
+
+            CipherKeys.GetKeyAndIV(uVer, uLenCompressed, out aKey, out aIV);
+            AESCipher pCipher = new AESCipher(aKey, aIV);
+            pCipher.TransformBlock(pEncrypted, 0, uLen, pEncrypted, 0);
+
+            pEncrypted = Encoding.UTF8.GetBytes(Convert.ToBase64String(pEncrypted));
+            uLenEncoded = (uint) pEncrypted.Length;
+
+            return pEncrypted;
         }
     }
 }
