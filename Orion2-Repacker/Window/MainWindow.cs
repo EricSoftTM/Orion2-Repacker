@@ -25,7 +25,7 @@ namespace Orion.Window
         {
             InitializeComponent();
 
-            this.panel1.AutoScroll = true;
+            this.pImagePanel.AutoScroll = true;
 
             this.pImageData.BorderStyle = BorderStyle.None;
             this.pImageData.Anchor = (AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
@@ -112,10 +112,10 @@ namespace Orion.Window
             int nHeight = (this.Size.Height - this.pPrevSize.Height);
             int nWidth = (this.Size.Width - this.pPrevSize.Width);
 
-            this.panel1.Size = new Size
+            this.pImagePanel.Size = new Size
             {
-                Height = this.panel1.Height + nHeight,
-                Width = this.panel1.Width + nWidth
+                Height = this.pImagePanel.Height + nHeight,
+                Width = this.pImagePanel.Width + nWidth
             };
 
             RenderImageData();
@@ -321,6 +321,36 @@ namespace Orion.Window
             }
         }
 
+        private void OnSaveChanges(object sender, EventArgs e)
+        {
+            if (!this.pUpdateDataBtn.Visible)
+            {
+                return;
+            }
+
+            PackNode pNode = this.pTreeView.SelectedNode as PackNode;
+            if (pNode != null && pNode.Data != null)
+            {
+                PackFileEntry pEntry = pNode.Tag as PackFileEntry;
+                
+                if (pEntry != null)
+                {
+                    string sData = this.pTextData.Text;
+                    byte[] pData = Encoding.UTF8.GetBytes(sData.ToCharArray());
+
+                    if (pNode.Data != pData)
+                    {
+                        pEntry.Data = pData;
+                        pEntry.Changed = true;
+                        Console.WriteLine("Data has been successfully changed!");
+                    } else
+                    {
+                        Console.WriteLine("The data is equal - no changes detected!");
+                    }
+                }
+            }
+        }
+
         // TODO: Implement progress bar status, improve speed & efficiency if at all possible.
         private void OnSaveFile(object sender, EventArgs e)
         {
@@ -431,7 +461,10 @@ namespace Orion.Window
 
                     if (pFileHeader != null)
                     {
-                        pNode.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
+                        if (pNode.Data == null)
+                        {
+                            pNode.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
+                        }
 
                         UpdatePanel(pEntry.TreeName.Split('.')[1].ToLower(), pNode.Data);
                     }
@@ -476,12 +509,12 @@ namespace Orion.Window
 
         private void RenderImageData()
         {
-            this.pImageData.Visible = this.panel1.Visible;
+            this.pImageData.Visible = this.pImagePanel.Visible;
 
             if (this.pImageData.Visible)
             {
-                this.pImageData.SizeMode = this.pImageData.Image.Size.Height > this.panel1.Height
-                    || this.pImageData.Image.Size.Width > this.panel1.Width ? PictureBoxSizeMode.Zoom : PictureBoxSizeMode.Normal;
+                this.pImageData.SizeMode = this.pImageData.Image.Size.Height > this.pImagePanel.Height
+                    || this.pImageData.Image.Size.Width > this.pImagePanel.Width ? PictureBoxSizeMode.Zoom : PictureBoxSizeMode.Normal;
                 this.pImageData.Update();
             }
         }
@@ -500,13 +533,51 @@ namespace Orion.Window
             using (BinaryWriter pWriter = new BinaryWriter(File.Create(sDataPath)))
             {
                 // Iterate all file entries that exist
-                foreach (PackFileEntry pEntry in aEntry)
+                foreach (PackFileEntry pEntry in aEntry.ToArray())
                 {
                     // If the entry was modified, or is new, ignore it and continue
                     if (pEntry.Changed)
                     {
-                        aNewEntry.Add(pEntry);
-                        aEntry.Remove(pEntry);
+                        PackFileHeaderVerBase pHeader = pEntry.FileHeader;
+
+                        // If the header is null (new entry), then create one
+                        if (pHeader == null)
+                        {
+                            // TODO: Real use of Compression Flags.. atm just compress everything yolo ;)
+                            switch (uVer)
+                            {
+                                case PackVer.MS2F:
+                                    pHeader = PackFileHeaderVer1.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                    break;
+                                case PackVer.NS2F:
+                                    pHeader = PackFileHeaderVer2.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                    break;
+                                case PackVer.OS2F:
+                                case PackVer.PS2F:
+                                    pHeader = PackFileHeaderVer3.CreateHeader(uVer, nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                    break;
+                            }
+                            // Update the entry's file header to the newly created one
+                            pEntry.FileHeader = pHeader;
+                        }
+                        else
+                        {
+                            // If the header existed already, re-calculate the file index and offset.
+                            pHeader.SetFileIndex(nCurIndex);
+                            pHeader.SetOffset(uOffset);
+                        }
+
+                        // Encrypt the new data block and output the header size data
+                        uint uLen, uCompressed, uEncoded;
+                        pWriter.Write(CryptoMan.Encrypt(uVer, pEntry.Data, pEntry.FileHeader.GetCompressionFlag() == 0xEE000009, out uLen, out uCompressed, out uEncoded));
+
+                        // Apply the file size changes from the new buffer
+                        pHeader.SetFileSize(uLen);
+                        pHeader.SetCompressedFileSize(uCompressed);
+                        pHeader.SetEncodedFileSize(uEncoded);
+
+                        nCurIndex++;
+                        uOffset += pHeader.GetEncodedFileSize();
                     }
                     // If the entry is unchanged, parse the block from the original offsets
                     else
@@ -543,55 +614,6 @@ namespace Orion.Window
                         }
                     }
                 }
-
-                // Now iterate all of the new or modified entries
-                foreach (PackFileEntry pEntry in aNewEntry)
-                {
-                    PackFileHeaderVerBase pHeader = pEntry.FileHeader;
-
-                    // If the header is null (new entry), then create one
-                    if (pHeader == null)
-                    {
-                        // TODO: Real use of Compression Flags.. atm just compress everything yolo ;)
-                        switch (uVer)
-                        {
-                            case PackVer.MS2F:
-                                pHeader = PackFileHeaderVer1.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
-                                break;
-                            case PackVer.NS2F:
-                                pHeader = PackFileHeaderVer2.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
-                                break;
-                            case PackVer.OS2F:
-                            case PackVer.PS2F:
-                                pHeader = PackFileHeaderVer3.CreateHeader(uVer, nCurIndex, 0xEE000009, uOffset, pEntry.Data);
-                                break;
-                        }
-                        // Update the entry's file header to the newly created one
-                        pEntry.FileHeader = pHeader;
-                    }
-                    else
-                    {
-                        // If the header existed already, re-calculate the file index and offset.
-                        pHeader.SetFileIndex(nCurIndex);
-                        pHeader.SetOffset(uOffset);
-                    }
-
-                    // Encrypt the new data block and output the header size data
-                    uint uLen, uCompressed, uEncoded;
-                    pWriter.Write(CryptoMan.Encrypt(uVer, pEntry.Data, pEntry.FileHeader.GetCompressionFlag() == 0xEE000009, out uLen, out uCompressed, out uEncoded));
-
-                    // Apply the file size changes from the new buffer
-                    pHeader.SetFileSize(uLen);
-                    pHeader.SetCompressedFileSize(uCompressed);
-                    pHeader.SetEncodedFileSize(uEncoded);
-
-                    nCurIndex++;
-                    uOffset += pHeader.GetEncodedFileSize();
-
-                    // Add this new entry back to the file list.
-                    aEntry.Add(pEntry);
-                    aNewEntry.Remove(pEntry);
-                }
             }
         }
 
@@ -602,7 +624,8 @@ namespace Orion.Window
             this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua")
                 || sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
                 || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"));
-            this.panel1.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
+            this.pUpdateDataBtn.Visible = this.pTextData.Visible;
+            this.pImagePanel.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
 
             if (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua"))
             {
