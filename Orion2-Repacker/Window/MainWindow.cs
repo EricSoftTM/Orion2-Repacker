@@ -400,14 +400,14 @@ namespace Orion.Window
                     uint dwFileCount = (uint)pStream.GetFileList().Count;
 
                     // Construct a raw string containing the new file list information
-                    string sFileString = "";
+                    StringBuilder sFileString = new StringBuilder();
                     foreach (PackFileEntry pEntry in pStream.GetFileList())
                     {
-                        sFileString += pEntry.ToString();
+                        sFileString.Append(pEntry.ToString());
                     }
 
                     // Encrypt the file list and output the new header sizes (header update)
-                    byte[] pFileString = Encoding.UTF8.GetBytes(sFileString.ToCharArray());
+                    byte[] pFileString = Encoding.UTF8.GetBytes(sFileString.ToString().ToCharArray());
                     byte[] pHeader = CryptoMan.Encrypt(pStream.GetVer(), pFileString, BufferManipulation.AES_ZLIB, out uint uHeaderLen, out uint uCompressedHeaderLen, out uint uEncodedHeaderLen);
 
                     // Construct a new file allocation table
