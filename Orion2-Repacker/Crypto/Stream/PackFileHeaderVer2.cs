@@ -1,60 +1,75 @@
-﻿using Orion.Crypto.Common;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using Orion.Crypto.Common;
 using System.IO;
 
 namespace Orion.Crypto.Stream
 {
     public class PackFileHeaderVer2 : PackFileHeaderVerBase
     {
-        private uint dwCompressionFlag;
-        private int dwFileIndex;
-        private uint dwEncodedFileSize;
-        private ulong dwCompressedFileSize;
-        private ulong dwFileSize;
-        private ulong dwOffset;
+        private uint dwBufferFlag;
+        private int nFileIndex;
+        private uint uEncodedFileSize;
+        private ulong uCompressedFileSize;
+        private ulong uFileSize;
+        private ulong uOffset;
 
         private PackFileHeaderVer2()
         {
-
+            // Interesting.. no reserved bytes stored in Ver2.
         }
 
-        public static PackFileHeaderVer2 CreateHeader(int nIndex, uint dwCompression, ulong uOffset, byte[] pData)
+        public PackFileHeaderVer2(BinaryReader pReader)
+            : this()
+        {
+            this.dwBufferFlag = pReader.ReadUInt32();        //[ecx+8]
+            this.nFileIndex = pReader.ReadInt32();           //[ecx+12]
+            this.uEncodedFileSize = pReader.ReadUInt32();    //[ecx+16]
+            this.uCompressedFileSize = pReader.ReadUInt64(); //[ecx+20] | [ecx+24]
+            this.uFileSize = pReader.ReadUInt64();           //[ecx+28] | [ecx+32]
+            this.uOffset = pReader.ReadUInt64();             //[ecx+36] | [ecx+40]
+        }
+
+        public static PackFileHeaderVer2 CreateHeader(int nIndex, uint dwFlag, ulong uOffset, byte[] pData)
         {
             uint uLen, uCompressedLen, uEncodedLen;
 
-            CryptoMan.Encrypt(PackVer.NS2F, pData, dwCompression == 0xEE000009, out uLen, out uCompressedLen, out uEncodedLen);
+            CryptoMan.Encrypt(PackVer.NS2F, pData, dwFlag, out uLen, out uCompressedLen, out uEncodedLen);
 
             return new PackFileHeaderVer2
             {
-                dwCompressionFlag = dwCompression,
-                dwFileIndex = nIndex,
-                dwEncodedFileSize = uEncodedLen,
-                dwCompressedFileSize = uCompressedLen,
-                dwFileSize = uLen,
-                dwOffset = uOffset
-            };
-        }
-
-        public static PackFileHeaderVer2 ParseHeader(BinaryReader pReader)
-        {
-            return new PackFileHeaderVer2
-            {
-                dwCompressionFlag = pReader.ReadUInt32(),
-                dwFileIndex = pReader.ReadInt32(),
-                dwEncodedFileSize = pReader.ReadUInt32(),
-                dwCompressedFileSize = pReader.ReadUInt64(),
-                dwFileSize = pReader.ReadUInt64(),
-                dwOffset = pReader.ReadUInt64()
+                dwBufferFlag = dwFlag,
+                nFileIndex = nIndex,
+                uEncodedFileSize = uEncodedLen,
+                uCompressedFileSize = uCompressedLen,
+                uFileSize = uLen,
+                uOffset = uOffset
             };
         }
 
         public void Encode(BinaryWriter pWriter)
         {
-            pWriter.Write(this.dwCompressionFlag);
-            pWriter.Write(this.dwFileIndex);
-            pWriter.Write(this.dwEncodedFileSize);
-            pWriter.Write(this.dwCompressedFileSize);
-            pWriter.Write(this.dwFileSize);
-            pWriter.Write(this.dwOffset);
+            pWriter.Write(this.dwBufferFlag);
+            pWriter.Write(this.nFileIndex);
+            pWriter.Write(this.uEncodedFileSize);
+            pWriter.Write(this.uCompressedFileSize);
+            pWriter.Write(this.uFileSize);
+            pWriter.Write(this.uOffset);
         }
 
         public uint GetVer()
@@ -64,57 +79,57 @@ namespace Orion.Crypto.Stream
 
         public int GetFileIndex()
         {
-            return dwFileIndex;
+            return nFileIndex;
         }
 
-        public uint GetCompressionFlag()
+        public uint GetBufferFlag()
         {
-            return dwCompressionFlag;
+            return dwBufferFlag;
         }
 
         public ulong GetOffset()
         {
-            return dwOffset;
+            return uOffset;
         }
 
-        public ulong GetEncodedFileSize()
+        public uint GetEncodedFileSize()
         {
-            return dwEncodedFileSize;
+            return uEncodedFileSize;
         }
 
         public ulong GetCompressedFileSize()
         {
-            return dwCompressedFileSize;
+            return uCompressedFileSize;
         }
 
         public ulong GetFileSize()
         {
-            return dwFileSize;
+            return uFileSize;
         }
 
         public void SetFileIndex(int nIndex)
         {
-            this.dwFileIndex = nIndex;
+            this.nFileIndex = nIndex;
         }
 
-        public void SetOffset(ulong dwOffset)
+        public void SetOffset(ulong uOffset)
         {
-            this.dwOffset = dwOffset;
+            this.uOffset = uOffset;
         }
 
-        public void SetEncodedFileSize(ulong uEncoded)
+        public void SetEncodedFileSize(uint uEncoded)
         {
-            this.dwEncodedFileSize = (uint) uEncoded;
+            this.uEncodedFileSize = uEncoded;
         }
 
         public void SetCompressedFileSize(ulong uCompressed)
         {
-            this.dwCompressedFileSize = uCompressed;
+            this.uCompressedFileSize = uCompressed;
         }
 
         public void SetFileSize(ulong uSize)
         {
-            this.dwFileSize = uSize;
+            this.uFileSize = uSize;
         }
     }
 }

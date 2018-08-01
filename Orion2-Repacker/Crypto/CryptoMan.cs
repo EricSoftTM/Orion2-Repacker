@@ -1,4 +1,21 @@
-﻿using Orion.Crypto.Common;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using Orion.Crypto.Common;
 using Orion.Crypto.Stream;
 using Orion.Crypto.Stream.zlib;
 using System;
@@ -9,8 +26,45 @@ namespace Orion.Crypto
 {
     public class CryptoMan
     {
+        public class BufferManipulation
+        {
+            public const uint 
+                /*
+                 * Standard crypto: Base64 Encoded + AES Encrypted buffers.
+                 * 
+                 * mov  [dwBufferFlag], 0
+                 * mov  byte ptr [dwBufferFlag+3], 0xEE
+                */
+                AES         = 0xEE000000,
+                /*
+                 * AES buffers who have been additionally compressed with zlib.
+                 * NOTE: The first bit is the level of compression used.
+                 * 
+                 * mov  [dwBufferFlag], 0
+                 * mov  byte ptr [dwBufferFlag], 9
+                 * mov  byte ptr [dwBufferFlag+3], 0xEE
+                */
+                AES_ZLIB    = AES | 9,
+                /*
+                 * Alternative crypto: XOR Encrypted buffers.
+                 * 
+                 * mov  [dwBufferFlag], 0
+                 * mov  byte ptr [dwBufferFlag+3], 0xFF
+                */
+                XOR         = 0xFF000000,
+                /*
+                 * XOR buffers who have been additionally compressed with zlib.
+                 * NOTE: The first bit is the level of compression used.
+                 * 
+                 * mov  [dwBufferFlag], 0
+                 * mov  byte ptr [dwBufferFlag], 9
+                 * mov  byte ptr [dwBufferFlag+3], 0xFF
+                */
+                XOR_ZLIB    = XOR | 9
+            ;
+        }
 
-        public static byte[] DecryptFileList(PackStreamVerBase pStream, System.IO.Stream pBuffer)
+        public static byte[] DecryptFileString(PackStreamVerBase pStream, System.IO.Stream pBuffer)
         {
             if (pStream.GetCompressedHeaderSize() > 0 && pStream.GetEncodedHeaderSize() > 0 && pStream.GetHeaderSize() > 0)
             {
@@ -18,9 +72,7 @@ namespace Orion.Crypto
 
                 if ((ulong)pBuffer.Read(pSrc, 0, (int)pStream.GetEncodedHeaderSize()) == pStream.GetEncodedHeaderSize())
                 {
-                    bool bCompressed = pStream.GetEncodedHeaderSize() != pStream.GetCompressedHeaderSize();
-
-                    return Decrypt(pStream.GetVer(), (uint)pStream.GetEncodedHeaderSize(), (uint)pStream.GetCompressedHeaderSize(), bCompressed, pSrc);
+                    return Decrypt(pStream.GetVer(), (uint)pStream.GetEncodedHeaderSize(), (uint)pStream.GetCompressedHeaderSize(), BufferManipulation.AES_ZLIB, pSrc);
                 }
             }
 
@@ -35,9 +87,7 @@ namespace Orion.Crypto
 
                 if ((ulong)pBuffer.Read(pSrc, 0, (int)pStream.GetEncodedDataSize()) == pStream.GetEncodedDataSize())
                 {
-                    bool bCompressed = pStream.GetEncodedDataSize() != pStream.GetCompressedDataSize();
-
-                    return Decrypt(pStream.GetVer(), (uint)pStream.GetEncodedDataSize(), (uint)pStream.GetCompressedDataSize(), bCompressed, pSrc);
+                    return Decrypt(pStream.GetVer(), (uint)pStream.GetEncodedDataSize(), (uint)pStream.GetCompressedDataSize(), BufferManipulation.AES_ZLIB, pSrc);
                 }
             }
 
@@ -49,13 +99,13 @@ namespace Orion.Crypto
 
             if (pHeader.GetCompressedFileSize() > 0 && pHeader.GetEncodedFileSize() > 0 && pHeader.GetFileSize() > 0)
             {
-                using (MemoryMappedViewStream pBuffer = pData.CreateViewStream((long)pHeader.GetOffset(), (long)pHeader.GetEncodedFileSize()))
+                using (MemoryMappedViewStream pBuffer = pData.CreateViewStream((long)pHeader.GetOffset(), pHeader.GetEncodedFileSize()))
                 {
                     byte[] pSrc = new byte[pHeader.GetEncodedFileSize()];
 
-                    if ((ulong)pBuffer.Read(pSrc, 0, (int)pHeader.GetEncodedFileSize()) == pHeader.GetEncodedFileSize())
+                    if (pBuffer.Read(pSrc, 0, (int)pHeader.GetEncodedFileSize()) == pHeader.GetEncodedFileSize())
                     {
-                        return Decrypt(pHeader.GetVer(), (uint)pHeader.GetEncodedFileSize(), (uint)pHeader.GetCompressedFileSize(), pHeader.GetCompressionFlag() == 0xEE000009, pSrc);
+                        return Decrypt(pHeader.GetVer(), pHeader.GetEncodedFileSize(), (uint)pHeader.GetCompressedFileSize(), pHeader.GetBufferFlag(), pSrc);
                     }
                 }
             }
@@ -64,55 +114,132 @@ namespace Orion.Crypto
         }
 
         // Decryption Routine: Base64 -> AES -> Zlib
-        private static byte[] Decrypt(uint uVer, uint uLen, uint uLenCompressed, bool bCompressed, byte[] pSrc)
+        private static byte[] Decrypt(uint uVer, uint uLen, uint uLenCompressed, uint dwBufferFlag, byte[] pSrc)
         {
-            byte[] aKey;
-            byte[] aIV;
+            byte[] bits = BitConverter.GetBytes(dwBufferFlag);
 
-            CipherKeys.GetKeyAndIV(uVer, uLenCompressed, out aKey, out aIV);
-
-            AESCipher pCipher = new AESCipher(aKey, aIV);
-
-            byte[] pDecrypted = Convert.FromBase64String(Encoding.UTF8.GetString(pSrc));
-            pCipher.TransformBlock(pDecrypted, 0, uLen, pDecrypted, 0);
-
-            if (bCompressed)
+            if (!((bits[3] & 1) != 0))
             {
-                return ZlibStream.UncompressBuffer(pDecrypted);
-            }
-            else
+                byte[] aKey;
+                byte[] aIV;
+                // Get the AES Key/IV for transformation
+                CipherKeys.GetKeyAndIV(uVer, uLenCompressed, out aKey, out aIV);
+
+                // Decode the base64 encoded string
+                pSrc = Convert.FromBase64String(Encoding.UTF8.GetString(pSrc));
+
+                // Decrypt the AES encrypted block
+                AESCipher pCipher = new AESCipher(aKey, aIV);
+                pCipher.TransformBlock(pSrc, 0, uLen, pSrc, 0);
+            } else
             {
-                return pDecrypted;
+                // Decrypt the XOR encrypted block
+                pSrc = EncryptXOR(uVer, pSrc, uLen, uLenCompressed);
             }
+
+            if (bits[0] != 0)
+            {
+                return ZlibStream.UncompressBuffer(pSrc);
+            }
+
+            return pSrc;
         }
 
         // Encryption Routine: Zlib -> AES -> Base64
-        public static byte[] Encrypt(uint uVer, byte[] pSrc, bool bCompressed, out uint uLen, out uint uLenCompressed, out uint uLenEncoded)
+        public static byte[] Encrypt(uint uVer, byte[] pSrc, uint dwBufferFlag, out uint uLen, out uint uLenCompressed, out uint uLenEncoded)
         {
-            byte[] aKey;
-            byte[] aIV;
-
-            uLen = (uint) pSrc.Length;
+            byte[] bits = BitConverter.GetBytes(dwBufferFlag);
 
             byte[] pEncrypted;
-            if (bCompressed)
+            if (bits[0] != 0)
             {
                 pEncrypted = ZlibStream.CompressBuffer(pSrc);
             } else
             {
-                pEncrypted = new byte[uLen];
-                Buffer.BlockCopy(pSrc, 0, pEncrypted, 0, (int)uLen);
+                pEncrypted = new byte[pSrc.Length];
+                Buffer.BlockCopy(pSrc, 0, pEncrypted, 0, pSrc.Length);
             }
+
+            uLen = (uint) pSrc.Length;
             uLenCompressed = (uint) pEncrypted.Length;
 
-            CipherKeys.GetKeyAndIV(uVer, uLenCompressed, out aKey, out aIV);
-            AESCipher pCipher = new AESCipher(aKey, aIV);
-            pCipher.TransformBlock(pEncrypted, 0, uLen, pEncrypted, 0);
+            if (!((bits[3] & 1) != 0))
+            {
+                byte[] aKey;
+                byte[] aIV;
+                // Get the AES Key/IV for transformation
+                CipherKeys.GetKeyAndIV(uVer, uLenCompressed, out aKey, out aIV);
 
-            pEncrypted = Encoding.UTF8.GetBytes(Convert.ToBase64String(pEncrypted));
+                // Perform AES block encryption
+                AESCipher pCipher = new AESCipher(aKey, aIV);
+                pCipher.TransformBlock(pEncrypted, 0, uLen, pEncrypted, 0);
+
+                // Encode the encrypted data into a base64 encoded string
+                pEncrypted = Encoding.UTF8.GetBytes(Convert.ToBase64String(pEncrypted));
+            } else
+            {
+                // Perform XOR block encryption
+                pEncrypted = EncryptXOR(uVer, pEncrypted, uLen, uLenCompressed);
+            }
+            
             uLenEncoded = (uint) pEncrypted.Length;
 
             return pEncrypted;
+        }
+
+        private static byte[] EncryptXOR(uint uVer, byte[] pSrc, uint uLen, uint uLenCompressed)
+        {
+            byte[] aKey;
+
+            CipherKeys.GetXORKey(uVer, out aKey);
+
+            uint uBlock = uLen >> 2;
+            uint uBlockOffset = 0;
+            int nKeyOffset = 0;
+
+            if (uBlock != 0)
+            {
+                while (uBlockOffset < uBlock)
+                {
+                    /*
+                     *  _begin:
+                     *      mov     eax, [ebp+pKey]
+                     *      mov     eax, [eax+edx*4]
+                     *      xor     [ebx+ecx*4], eax
+                     *      inc     edx
+                     *      inc     ecx
+                     *      and     edx, 1FFh
+                     *      cmp     ecx, esi
+                     *      jb _begin
+                     * _end:
+                     *      mov     eax, [ebp+uLen]
+                    */
+
+                    uint pBlockData = BitConverter.ToUInt32(pSrc, (int)(4 * uBlockOffset)) ^ BitConverter.ToUInt32(aKey, 4 * nKeyOffset);
+                    Buffer.BlockCopy(BitConverter.GetBytes(pBlockData), 0, pSrc, (int)(4 * uBlockOffset), sizeof(uint));
+
+                    nKeyOffset = ((ushort)nKeyOffset + 1) & 0x1FF;
+                    uBlockOffset++;
+                }
+            }
+
+            uBlock = (uLen & 3);
+            if (uBlock != 0)
+            {
+                int nStart = (int)(4 * uBlockOffset);
+
+                uBlockOffset = 0;
+                nKeyOffset = 0;
+
+                while (uBlockOffset < uBlock)
+                {
+                    pSrc[nStart + uBlockOffset++] ^= (byte)(aKey[nKeyOffset]);
+
+                    nKeyOffset = ((ushort)nKeyOffset + 1) & 0x7FF;
+                }
+            }
+
+            return pSrc;
         }
     }
 }

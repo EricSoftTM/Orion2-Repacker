@@ -1,4 +1,21 @@
-﻿using Orion.Crypto.Common;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using Orion.Crypto.Common;
 using System.Collections.Generic;
 using System.IO;
 
@@ -21,16 +38,16 @@ namespace Orion.Crypto.Stream
 
         List<PackFileEntry> GetFileList(); // Represents a list of fileinfo containers (<Index>,<Hash>,<Name>)
 
-        void Encode(BinaryWriter pWriter);
+        void Encode(BinaryWriter pWriter); // Encodes the header/data pack sizes to stream
 
-        void SetCompressedHeaderSize(ulong uCompressed);
-        void SetEncodedHeaderSize(ulong uEncoded);
-        void SetHeaderSize(ulong uSize);
+        void SetCompressedHeaderSize(ulong uCompressed); // Updates the compressed file string size
+        void SetEncodedHeaderSize(ulong uEncoded); // Updates the base64 encoded file string length
+        void SetHeaderSize(ulong uSize); // Updates the raw (uncompressed) file string size
 
-        void SetCompressedDataSize(ulong uCompressed);
-        void SetEncodedDataSize(ulong uEncoded);
-        void SetDataSize(ulong uSize);
+        void SetCompressedDataSize(ulong uCompressed); // Updates the compressed file table size
+        void SetEncodedDataSize(ulong uEncoded); // Updates the base64 encoded file table length
+        void SetDataSize(ulong uSize); // Updates the raw (uncompressed) file table size
 
-        void SetFileListCount(ulong uCount);
+        void SetFileListCount(ulong uCount); // Updates the total count of files within this stream
     }
 }

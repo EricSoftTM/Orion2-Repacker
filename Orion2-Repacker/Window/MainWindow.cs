@@ -1,8 +1,24 @@
-﻿using Orion.Crypto;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using Orion.Crypto;
 using Orion.Crypto.Common;
 using Orion.Crypto.Stream;
 using Orion.Crypto.Stream.DDS;
-using Orion.Crypto.Stream.zlib;
 using Orion.Window.Common;
 using System;
 using System.Collections.Generic;
@@ -11,13 +27,13 @@ using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
 using System.Windows.Forms;
+using static Orion.Crypto.CryptoMan;
 
 namespace Orion.Window
 {
     public partial class MainWindow : Form
     {
         private string sHeaderUOL;
-        private string sDataUOL;
         private PackNodeList pNodeList;
         private MemoryMappedFile pDataMappedMemFile;
 
@@ -36,7 +52,6 @@ namespace Orion.Window
             this.OnChangeWindowSize(null, null);
 
             this.sHeaderUOL = "";
-            this.sDataUOL = "";
 
             this.pNodeList = null;
             this.pDataMappedMemFile = null;
@@ -159,7 +174,7 @@ namespace Orion.Window
 
                 pNode.Expand();
             }
-            else if (pObj is PackFileEntry)
+            /*else if (pObj is PackFileEntry)
             {
                 PackFileEntry pEntry = pObj as PackFileEntry;
                 PackFileHeaderVerBase pFileHeader = pEntry.FileHeader;
@@ -170,7 +185,7 @@ namespace Orion.Window
 
                     UpdatePanel(pEntry.TreeName.Split('.')[1].ToLower(), pBuffer);
                 }
-            }
+            }*/
         }
 
         private void OnExit(object sender, EventArgs e)
@@ -227,16 +242,21 @@ namespace Orion.Window
             OpenFileDialog pDialog = new OpenFileDialog()
             {
                 Title = "Select the MS2 file to load",
-                Filter = "All Extensions (*.m2h, *.m2d)|*.m2h;*.m2d|Header Files (*.m2h)|*.m2h|Data Files (*.m2d)|*.m2d",
+                Filter = "MapleStory2 Files|*.m2d",
                 Multiselect = false
             };
 
             if (pDialog.ShowDialog() == DialogResult.OK)
             {
-                string sUOL = Dir_BackSlashToSlash(pDialog.FileName);
+                string sDataUOL = Dir_BackSlashToSlash(pDialog.FileName);
+                this.sHeaderUOL = sDataUOL.Replace(".m2d", ".m2h");
 
-                this.sHeaderUOL = sUOL.EndsWith(".m2h") ? sUOL : sUOL.Replace(".m2d", ".m2h");
-                this.sDataUOL = sUOL.EndsWith(".m2h") ? sUOL.Replace(".m2h", ".m2d") : sUOL;
+                if (!File.Exists(this.sHeaderUOL))
+                {
+                    string sHeaderName = this.sHeaderUOL.Substring(this.sHeaderUOL.LastIndexOf('/') + 1);
+                    NotifyMessage(string.Format("Unable to load the {0} file.\r\nPlease make sure it exists and is not being used.", sHeaderName), MessageBoxIcon.Error);
+                    return;
+                }
 
                 PackStreamVerBase pStream;
                 using (BinaryReader pHeader = new BinaryReader(File.OpenRead(this.sHeaderUOL)))
@@ -246,7 +266,7 @@ namespace Orion.Window
 
                     // Insert a collection containing the file list information [index,hash,name]
                     pStream.GetFileList().Clear();
-                    pStream.GetFileList().AddRange(PackFileEntry.CreateFileList(Encoding.UTF8.GetString(CryptoMan.DecryptFileList(pStream, pHeader.BaseStream))));
+                    pStream.GetFileList().AddRange(PackFileEntry.CreateFileList(Encoding.UTF8.GetString(CryptoMan.DecryptFileString(pStream, pHeader.BaseStream))));
                     // Make the collection of files sorted by their FileIndex for easy fetching
                     pStream.GetFileList().Sort();
                     
@@ -263,14 +283,14 @@ namespace Orion.Window
                                 case PackVer.MS2F:
                                     for (ulong i = 0; i < pStream.GetFileListCount(); i++)
                                     {
-                                        pFileHeader = PackFileHeaderVer1.ParseHeader(pReader);
+                                        pFileHeader = new PackFileHeaderVer1(pReader);
                                         pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
                                     }
                                     break;
                                 case PackVer.NS2F:
                                     for (ulong i = 0; i < pStream.GetFileListCount(); i++)
                                     {
-                                        pFileHeader = PackFileHeaderVer2.ParseHeader(pReader);
+                                        pFileHeader = new PackFileHeaderVer2(pReader);
                                         pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
                                     }
                                     break;
@@ -278,7 +298,7 @@ namespace Orion.Window
                                 case PackVer.PS2F:
                                     for (ulong i = 0; i < pStream.GetFileListCount(); i++)
                                     {
-                                        pFileHeader = PackFileHeaderVer3.ParseHeader(pReader, pStream.GetVer());
+                                        pFileHeader = new PackFileHeaderVer3(pStream.GetVer(), pReader);
                                         pStream.GetFileList()[pFileHeader.GetFileIndex() - 1].FileHeader = pFileHeader;
                                     }
                                     break;
@@ -287,7 +307,7 @@ namespace Orion.Window
                     }
                 }
 
-                this.pDataMappedMemFile = MemoryMappedFile.CreateFromFile(this.sDataUOL);
+                this.pDataMappedMemFile = MemoryMappedFile.CreateFromFile(sDataUOL);
 
                 InitializeTree(pStream);
             }
@@ -342,10 +362,6 @@ namespace Orion.Window
                     {
                         pEntry.Data = pData;
                         pEntry.Changed = true;
-                        Console.WriteLine("Data has been successfully changed!");
-                    } else
-                    {
-                        Console.WriteLine("The data is equal - no changes detected!");
                     }
                 }
             }
@@ -361,14 +377,12 @@ namespace Orion.Window
                 SaveFileDialog pDialog = new SaveFileDialog
                 {
                     Title = "Select the destination to save the file",
-                    Filter = "MS2 File|*.m2h;*.m2d"
+                    Filter = "MapleStory2 Files|*.m2d"
                 };
 
                 if (pDialog.ShowDialog() == DialogResult.OK)
                 {
                     string sPath = Dir_BackSlashToSlash(pDialog.FileName);
-                    string sDir = sPath.Substring(0, sPath.LastIndexOf('/') + 1);
-                    string sFileName = sPath.Replace(sDir, "").Split('.')[0];
 
                     PackStreamVerBase pStream = pNode.Tag as PackStreamVerBase;
                     if (pStream == null)
@@ -380,21 +394,21 @@ namespace Orion.Window
                     pStream.GetFileList().Sort();
 
                     // Save the data blocks to file and re-calculate all entries
-                    SaveData(sDir + sFileName + ".m2d", pStream.GetFileList());
+                    SaveData(sPath, pStream.GetFileList());
 
                     // Declare the new file count (header update)
                     uint dwFileCount = (uint)pStream.GetFileList().Count;
 
                     // Construct a raw string containing the new file list information
-                    string sFileList = "";
+                    string sFileString = "";
                     foreach (PackFileEntry pEntry in pStream.GetFileList())
                     {
-                        sFileList += pEntry.ToString();
+                        sFileString += pEntry.ToString();
                     }
 
                     // Encrypt the file list and output the new header sizes (header update)
-                    uint uHeaderLen, uCompressedHeaderLen, uEncodedHeaderLen;
-                    byte[] pHeader = CryptoMan.Encrypt(pStream.GetVer(), Encoding.UTF8.GetBytes(sFileList.ToCharArray()), true, out uHeaderLen, out uCompressedHeaderLen, out uEncodedHeaderLen);
+                    byte[] pFileString = Encoding.UTF8.GetBytes(sFileString.ToCharArray());
+                    byte[] pHeader = CryptoMan.Encrypt(pStream.GetVer(), pFileString, BufferManipulation.AES_ZLIB, out uint uHeaderLen, out uint uCompressedHeaderLen, out uint uEncodedHeaderLen);
 
                     // Construct a new file allocation table
                     byte[] pFileTable;
@@ -411,8 +425,7 @@ namespace Orion.Window
                     }
 
                     // Encrypt the file table and output the new data sizes (header update)
-                    uint uDataLen, uCompressedDataLen, uEncodedDataLen;
-                    pFileTable = CryptoMan.Encrypt(pStream.GetVer(), pFileTable, true, out uDataLen, out uCompressedDataLen, out uEncodedDataLen);
+                    pFileTable = CryptoMan.Encrypt(pStream.GetVer(), pFileTable, BufferManipulation.AES_ZLIB, out uint uDataLen, out uint uCompressedDataLen, out uint uEncodedDataLen);
 
                     // Update all header sizes to the new file list information
                     pStream.SetFileListCount(dwFileCount);
@@ -424,7 +437,7 @@ namespace Orion.Window
                     pStream.SetEncodedDataSize(uEncodedDataLen);
 
                     // Write the new header data to stream
-                    using (BinaryWriter pWriter = new BinaryWriter(File.Create(sPath)))
+                    using (BinaryWriter pWriter = new BinaryWriter(File.Create(sPath.Replace(".m2d", ".m2h"))))
                     {
                         // Encode the file version (MS2F,NS2F,etc)
                         pWriter.Write(pStream.GetVer());
@@ -439,7 +452,7 @@ namespace Orion.Window
                 }
             } else
             {
-                NotifyMessage("Please select the file to save.", MessageBoxIcon.Information);
+                NotifyMessage("Please select a Packed Data File file to save.", MessageBoxIcon.Information);
             }
         }
 
@@ -489,7 +502,6 @@ namespace Orion.Window
                 this.pNodeList = null;
 
                 this.sHeaderUOL = "";
-                this.sDataUOL = "";
 
                 if (this.pDataMappedMemFile != null)
                 {
@@ -535,7 +547,7 @@ namespace Orion.Window
                 // Iterate all file entries that exist
                 foreach (PackFileEntry pEntry in aEntry.ToArray())
                 {
-                    // If the entry was modified, or is new, ignore it and continue
+                    // If the entry was modified, or is new, write the modified data block
                     if (pEntry.Changed)
                     {
                         PackFileHeaderVerBase pHeader = pEntry.FileHeader;
@@ -543,18 +555,30 @@ namespace Orion.Window
                         // If the header is null (new entry), then create one
                         if (pHeader == null)
                         {
-                            // TODO: Real use of Compression Flags.. atm just compress everything yolo ;)
+                            // Hacky way of doing this, but this follows Nexon's current conventions.
+                            uint dwBufferFlag;
+                            if (pEntry.Name.EndsWith(".usm"))
+                            {
+                                dwBufferFlag = BufferManipulation.XOR;
+                            } else if (pEntry.Name.EndsWith(".png"))
+                            {
+                                dwBufferFlag = BufferManipulation.AES;
+                            } else
+                            {
+                                dwBufferFlag = BufferManipulation.AES_ZLIB;
+                            }
+
                             switch (uVer)
                             {
                                 case PackVer.MS2F:
-                                    pHeader = PackFileHeaderVer1.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                    pHeader = PackFileHeaderVer1.CreateHeader(nCurIndex, dwBufferFlag, uOffset, pEntry.Data);
                                     break;
                                 case PackVer.NS2F:
-                                    pHeader = PackFileHeaderVer2.CreateHeader(nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                    pHeader = PackFileHeaderVer2.CreateHeader(nCurIndex, dwBufferFlag, uOffset, pEntry.Data);
                                     break;
                                 case PackVer.OS2F:
                                 case PackVer.PS2F:
-                                    pHeader = PackFileHeaderVer3.CreateHeader(uVer, nCurIndex, 0xEE000009, uOffset, pEntry.Data);
+                                    pHeader = PackFileHeaderVer3.CreateHeader(uVer, nCurIndex, dwBufferFlag, uOffset, pEntry.Data);
                                     break;
                             }
                             // Update the entry's file header to the newly created one
@@ -568,8 +592,7 @@ namespace Orion.Window
                         }
 
                         // Encrypt the new data block and output the header size data
-                        uint uLen, uCompressed, uEncoded;
-                        pWriter.Write(CryptoMan.Encrypt(uVer, pEntry.Data, pEntry.FileHeader.GetCompressionFlag() == 0xEE000009, out uLen, out uCompressed, out uEncoded));
+                        pWriter.Write(CryptoMan.Encrypt(uVer, pEntry.Data, pEntry.FileHeader.GetBufferFlag(), out uint uLen, out uint uCompressed, out uint uEncoded));
 
                         // Apply the file size changes from the new buffer
                         pHeader.SetFileSize(uLen);
@@ -598,7 +621,7 @@ namespace Orion.Window
                             {
                                 byte[] pSrc = new byte[pHeader.GetEncodedFileSize()];
 
-                                if ((ulong)pBuffer.Read(pSrc, 0, (int)pHeader.GetEncodedFileSize()) == pHeader.GetEncodedFileSize())
+                                if (pBuffer.Read(pSrc, 0, (int)pHeader.GetEncodedFileSize()) == pHeader.GetEncodedFileSize())
                                 {
                                     // Modify the header's file index to the updated offset after entry changes
                                     pHeader.SetFileIndex(nCurIndex);
@@ -638,7 +661,7 @@ namespace Orion.Window
                 try
                 {
                     this.pTextData.Text = System.Xml.Linq.XDocument.Parse(sOutput).ToString();
-                } catch (Exception e)
+                } catch (Exception)
                 {
                     this.pTextData.Text = sOutput;
                 }
@@ -658,7 +681,6 @@ namespace Orion.Window
 
                 /*
                  * TODO:
-                 * *.usm files (NOTE: unable to access raw data due to decryption error, fix bug with usm data)
                  * *.nif, *.kf, and *.kfm files
                  * Shaders/*.fxo - directx shader files?
                  * PrecomputedTerrain/*.tok - mesh3d files? token files?

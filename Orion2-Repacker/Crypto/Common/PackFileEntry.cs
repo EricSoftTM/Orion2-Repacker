@@ -1,4 +1,21 @@
-﻿using Orion.Crypto.Stream;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using Orion.Crypto.Stream;
 using System;
 using System.Collections.Generic;
 
@@ -6,13 +23,13 @@ namespace Orion.Crypto.Common
 {
     public class PackFileEntry : IComparable<PackFileEntry>
     {
-        public int Index { get; set; }
-        public string Hash { get; set; }
-        public string Name { get; set; }
-        public string TreeName { get; set; }
-        public PackFileHeaderVerBase FileHeader { get; set; }
-        public byte[] Data { get; set; }
-        public bool Changed { get; set; }
+        public int Index { get; set; } // The index of the file in the lookup table
+        public string Hash { get; set; } // A hash assigned to all files in the directory
+        public string Name { get; set; } // The full name of the file (path/name.ext)
+        public string TreeName { get; set; } // The visual name displayed in the tree (name.ext)
+        public PackFileHeaderVerBase FileHeader { get; set; } // The file information (size, offset, etc.)
+        public byte[] Data { get; set; } // The raw, decrypted, and current data buffer of the file
+        public bool Changed { get; set; } // If the data has been modified in the repacker
 
         public int CompareTo(PackFileEntry pObj)
         {
@@ -30,22 +47,49 @@ namespace Orion.Crypto.Common
             return string.Format("{0},{1},{2}\r\n", Index, Hash, Name);
         }
 
-        public static List<PackFileEntry> CreateFileList(string sFileList)
+        /*
+         * Creates a collection of pack file entries from the file string.
+         * 
+         * @param sFileString The string containing a table of of files
+         * 
+         * @return A list of file entries with their index/hash/name loaded
+         * 
+        */
+        public static List<PackFileEntry> CreateFileList(string sFileString)
         {
             List<PackFileEntry> aFileList = new List<PackFileEntry>();
 
-            string[] aEntries = sFileList.Split('\n');
+            string[] aEntries = sFileString.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
             foreach (string sEntry in aEntries)
             {
-                if (!string.IsNullOrWhiteSpace(sEntry))
+                int nProperties = 0;
+                foreach (char c in sEntry)
                 {
-                    string[] aProperties = sEntry.Replace("\r", "").Replace("\n", "").Split(',');
+                    if (c == ',')
+                        ++nProperties;
+                }
+
+                string sIndex, sName;
+                if (nProperties == 1)
+                {
+                    sIndex = sEntry.Split(',')[0]; //strtok(pStr, ",")
+                    sName = sEntry.Split(',')[1]; //strtok(pStr, ",")
 
                     aFileList.Add(new PackFileEntry
                     {
-                        Index = int.Parse(aProperties[0]),
-                        Hash = aProperties.Length == 3 ? aProperties[1] : "",
-                        Name = aProperties.Length == 3 ? aProperties[2] : aProperties[1]
+                        Index = int.Parse(sIndex), //atoi(sIndex)
+                        Name = sName
+                    });
+                } else if (nProperties == 2)
+                {
+                    sIndex = sEntry.Split(',')[0]; //strtok(pStr, ",")
+                    sName = sEntry.Split(',')[2]; //if (nPropertyIdx == 1)
+
+                    aFileList.Add(new PackFileEntry
+                    {
+                        Index = int.Parse(sIndex), //atoi(sIndex)
+                        Hash = sEntry.Split(',')[1], //if (!nPropertyIdx)
+                        Name = sName
                     });
                 }
             }

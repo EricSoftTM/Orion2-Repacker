@@ -1,12 +1,29 @@
-﻿using Orion.Crypto.Common;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using Orion.Crypto.Common;
 using System.Collections.Generic;
 
 namespace Orion.Window.Common
 {
     public class PackNodeList
     {
-        private readonly Dictionary<string, PackNodeList> mChildren;
-        private readonly Dictionary<string, PackFileEntry> mEntries;
+        private readonly Dictionary<string, PackNodeList> mChildren; // <directory, list of nodes>
+        private readonly Dictionary<string, PackFileEntry> mEntries; // <file name, file entry>
 
         public Dictionary<string, PackNodeList> Children { get { return mChildren; } }
         public Dictionary<string, PackFileEntry> Entries { get { return mEntries; } }
@@ -17,6 +34,10 @@ namespace Orion.Window.Common
             this.mEntries = new Dictionary<string, PackFileEntry>();
         }
 
+        /*
+         * Recursively clear all children/entries within this node list.
+         * 
+        */
         public void InternalRelease()
         {
             mEntries.Clear();

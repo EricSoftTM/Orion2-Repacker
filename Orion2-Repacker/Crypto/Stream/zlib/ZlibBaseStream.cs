@@ -50,9 +50,6 @@ namespace Orion.Crypto.Stream.zlib
 
         // workitem 7159
         CRC32 crc;
-        protected internal string _GzipFileName;
-        protected internal string _GzipComment;
-        protected internal DateTime _GzipMtime;
         protected internal int _gzipHeaderByteCount;
 
         internal int Crc32 { get { if (crc == null) return 0; return crc.Crc32Result; } }
