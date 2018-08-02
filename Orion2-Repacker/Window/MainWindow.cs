@@ -22,6 +22,7 @@ using Orion.Crypto.Stream.DDS;
 using Orion.Window.Common;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.IO.MemoryMappedFiles;
@@ -36,6 +37,7 @@ namespace Orion.Window
         private string sHeaderUOL;
         private PackNodeList pNodeList;
         private MemoryMappedFile pDataMappedMemFile;
+        private ProgressWindow pProgress;
 
         public MainWindow()
         {
@@ -54,6 +56,7 @@ namespace Orion.Window
 
             this.pNodeList = null;
             this.pDataMappedMemFile = null;
+            this.pProgress = null;
 
             this.UpdatePanel("", null);
         }
@@ -382,6 +385,87 @@ namespace Orion.Window
             }
         }
 
+        private void OnSaveBegin(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker pWorker = sender as BackgroundWorker;
+
+            if (pWorker != null)
+            {
+                PackStreamVerBase pStream = this.pProgress.Stream;
+                if (pStream == null)
+                {
+                    return;
+                }
+                // Start the elapsed time progress stopwatch
+                this.pProgress.Start();
+
+                // Re-calculate the file list in case of index removal
+                pStream.GetFileList().Sort();
+
+                // Save the data blocks to file and re-calculate all entries
+                SaveData(this.pProgress.Path, pStream.GetFileList());
+
+                // Declare the new file count (header update)
+                uint dwFileCount = (uint)pStream.GetFileList().Count;
+
+                // Construct a raw string containing the new file list information
+                StringBuilder sFileString = new StringBuilder();
+                foreach (PackFileEntry pEntry in pStream.GetFileList())
+                {
+                    sFileString.Append(pEntry.ToString());
+                }
+                this.pSaveWorkerThread.ReportProgress(96);
+
+                // Encrypt the file list and output the new header sizes (header update)
+                byte[] pFileString = Encoding.UTF8.GetBytes(sFileString.ToString().ToCharArray());
+                byte[] pHeader = CryptoMan.Encrypt(pStream.GetVer(), pFileString, BufferManipulation.AES_ZLIB, out uint uHeaderLen, out uint uCompressedHeaderLen, out uint uEncodedHeaderLen);
+                this.pSaveWorkerThread.ReportProgress(97);
+
+                // Construct a new file allocation table
+                byte[] pFileTable;
+                using (MemoryStream pOutStream = new MemoryStream())
+                {
+                    using (BinaryWriter pWriter = new BinaryWriter(pOutStream))
+                    {
+                        foreach (PackFileEntry pEntry in pStream.GetFileList())
+                        {
+                            pEntry.FileHeader.Encode(pWriter);
+                        }
+                    }
+                    pFileTable = pOutStream.ToArray();
+                }
+                this.pSaveWorkerThread.ReportProgress(98);
+
+                // Encrypt the file table and output the new data sizes (header update)
+                pFileTable = CryptoMan.Encrypt(pStream.GetVer(), pFileTable, BufferManipulation.AES_ZLIB, out uint uDataLen, out uint uCompressedDataLen, out uint uEncodedDataLen);
+                this.pSaveWorkerThread.ReportProgress(99);
+
+                // Update all header sizes to the new file list information
+                pStream.SetFileListCount(dwFileCount);
+                pStream.SetHeaderSize(uHeaderLen);
+                pStream.SetCompressedHeaderSize(uCompressedHeaderLen);
+                pStream.SetEncodedHeaderSize(uEncodedHeaderLen);
+                pStream.SetDataSize(uDataLen);
+                pStream.SetCompressedDataSize(uCompressedDataLen);
+                pStream.SetEncodedDataSize(uEncodedDataLen);
+
+                // Write the new header data to stream
+                using (BinaryWriter pWriter = new BinaryWriter(File.Create(this.pProgress.Path.Replace(".m2d", ".m2h"))))
+                {
+                    // Encode the file version (MS2F,NS2F,etc)
+                    pWriter.Write(pStream.GetVer());
+
+                    // Encode the stream header information
+                    pStream.Encode(pWriter);
+
+                    // Encode the encrypted header and file table buffers
+                    pWriter.Write(pHeader);
+                    pWriter.Write(pFileTable);
+                }
+                this.pSaveWorkerThread.ReportProgress(100);
+            }
+        }
+
         private void OnSaveChanges(object sender, EventArgs e)
         {
             if (!this.pUpdateDataBtn.Visible)
@@ -408,7 +492,22 @@ namespace Orion.Window
             }
         }
 
-        // TODO: Implement progress bar status, improve speed & efficiency if at all possible.
+        private void OnSaveComplete(object sender, RunWorkerCompletedEventArgs e)
+        {
+            if (e.Error != null)
+            {
+                MessageBox.Show(this.pProgress, e.Error.Message, this.Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            this.pProgress.Finish();
+            this.pProgress.Close();
+            
+            TimeSpan pInterval = TimeSpan.FromMilliseconds(this.pProgress.ElapsedTime);
+            NotifyMessage(string.Format("Successfully saved in {0} minutes and {1} seconds!", pInterval.Minutes, pInterval.Seconds), MessageBoxIcon.Information);
+
+            // Perform heavy cleanup
+            System.GC.Collect();
+        }
+
         private void OnSaveFile(object sender, EventArgs e)
         {
             PackNode pNode = this.pTreeView.SelectedNode as PackNode;
@@ -425,76 +524,31 @@ namespace Orion.Window
                 {
                     string sPath = Dir_BackSlashToSlash(pDialog.FileName);
 
-                    PackStreamVerBase pStream = pNode.Tag as PackStreamVerBase;
-                    if (pStream == null)
+                    if (!pSaveWorkerThread.IsBusy)
                     {
-                        return;
-                    }
-
-                    // Re-calculate the file list in case of index removal
-                    pStream.GetFileList().Sort();
-
-                    // Save the data blocks to file and re-calculate all entries
-                    SaveData(sPath, pStream.GetFileList());
-
-                    // Declare the new file count (header update)
-                    uint dwFileCount = (uint)pStream.GetFileList().Count;
-
-                    // Construct a raw string containing the new file list information
-                    StringBuilder sFileString = new StringBuilder();
-                    foreach (PackFileEntry pEntry in pStream.GetFileList())
-                    {
-                        sFileString.Append(pEntry.ToString());
-                    }
-
-                    // Encrypt the file list and output the new header sizes (header update)
-                    byte[] pFileString = Encoding.UTF8.GetBytes(sFileString.ToString().ToCharArray());
-                    byte[] pHeader = CryptoMan.Encrypt(pStream.GetVer(), pFileString, BufferManipulation.AES_ZLIB, out uint uHeaderLen, out uint uCompressedHeaderLen, out uint uEncodedHeaderLen);
-
-                    // Construct a new file allocation table
-                    byte[] pFileTable;
-                    using (MemoryStream pOutStream = new MemoryStream())
-                    {
-                        using (BinaryWriter pWriter = new BinaryWriter(pOutStream))
+                        this.pProgress = new ProgressWindow
                         {
-                            foreach (PackFileEntry pEntry in pStream.GetFileList())
-                            {
-                                pEntry.FileHeader.Encode(pWriter);
-                            }
-                        }
-                        pFileTable = pOutStream.ToArray();
-                    }
+                            Path = sPath,
+                            Stream = (pNode.Tag as PackStreamVerBase)
+                        };
+                        this.pProgress.Show(this);
+                        // Why do you make this so complicated C#? 
+                        int x = this.DesktopBounds.Left + (this.Width - this.pProgress.Width) / 2;
+                        int y = this.DesktopBounds.Top + (this.Height - this.pProgress.Height) / 2;
+                        this.pProgress.SetDesktopLocation(x, y);
 
-                    // Encrypt the file table and output the new data sizes (header update)
-                    pFileTable = CryptoMan.Encrypt(pStream.GetVer(), pFileTable, BufferManipulation.AES_ZLIB, out uint uDataLen, out uint uCompressedDataLen, out uint uEncodedDataLen);
-
-                    // Update all header sizes to the new file list information
-                    pStream.SetFileListCount(dwFileCount);
-                    pStream.SetHeaderSize(uHeaderLen);
-                    pStream.SetCompressedHeaderSize(uCompressedHeaderLen);
-                    pStream.SetEncodedHeaderSize(uEncodedHeaderLen);
-                    pStream.SetDataSize(uDataLen);
-                    pStream.SetCompressedDataSize(uCompressedDataLen);
-                    pStream.SetEncodedDataSize(uEncodedDataLen);
-
-                    // Write the new header data to stream
-                    using (BinaryWriter pWriter = new BinaryWriter(File.Create(sPath.Replace(".m2d", ".m2h"))))
-                    {
-                        // Encode the file version (MS2F,NS2F,etc)
-                        pWriter.Write(pStream.GetVer());
-
-                        // Encode the stream header information
-                        pStream.Encode(pWriter);
-
-                        // Encode the encrypted header and file table buffers
-                        pWriter.Write(pHeader);
-                        pWriter.Write(pFileTable);
+                        this.pSaveWorkerThread.RunWorkerAsync();
                     }
                 }
             } else
             {
                 NotifyMessage("Please select a Packed Data File file to save.", MessageBoxIcon.Information);
             }
+        }
+
+        private void OnSaveProgress(object sender, ProgressChangedEventArgs e)
+        {
+            this.pProgress.UpdateProgressBar(e.ProgressPercentage);
         }
 
         private void OnSelectNode(object sender, TreeViewEventArgs e)
@@ -517,6 +571,8 @@ namespace Orion.Window
                     {
                         if (pNode.Data == null)
                         {
+                            // TODO: Improve memory efficiency here and dispose of the data if
+                            // it's unchanged once they select a different node in the tree.
                             pNode.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
                         }
 
@@ -605,7 +661,7 @@ namespace Orion.Window
             using (BinaryWriter pWriter = new BinaryWriter(File.Create(sDataPath)))
             {
                 // Iterate all file entries that exist
-                foreach (PackFileEntry pEntry in aEntry.ToArray())
+                foreach (PackFileEntry pEntry in aEntry)
                 {
                     // If the entry was modified, or is new, write the modified data block
                     if (pEntry.Changed)
@@ -696,6 +752,8 @@ namespace Orion.Window
                             }
                         }
                     }
+                    // Allow the remaining 5% for header file write progression
+                    this.pSaveWorkerThread.ReportProgress((int)(((double)(nCurIndex - 1) / (double)aEntry.Count) * 95.0d));
                 }
             }
         }

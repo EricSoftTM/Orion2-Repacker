@@ -1,4 +1,21 @@
-﻿using System.Drawing;
+﻿/*
+ *      This file is part of Orion2, a MapleStory2 Packaging Library Project.
+ *      Copyright (C) 2018 Eric Smith <notericsoft@gmail.com>
+ * 
+ *      This program is free software: you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation, either version 3 of the License, or
+ *      (at your option) any later version.
+ * 
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ * 
+ *      You should have received a copy of the GNU General Public License
+ */
+
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace Orion.Window
@@ -105,6 +122,7 @@ namespace Orion.Window
             this.pImagePanel = new System.Windows.Forms.Panel();
             this.pUpdateDataBtn = new System.Windows.Forms.Button();
             this.pChangeImageBtn = new System.Windows.Forms.Button();
+            this.pSaveWorkerThread = new System.ComponentModel.BackgroundWorker();
             this.pMenuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pImageData)).BeginInit();
             this.pImagePanel.SuspendLayout();
@@ -391,19 +409,26 @@ namespace Orion.Window
             this.pUpdateDataBtn.Visible = false;
             this.pUpdateDataBtn.Click += new System.EventHandler(this.OnSaveChanges);
             // 
-            // button1
+            // pChangeImageBtn
             // 
             this.pChangeImageBtn.BackColor = System.Drawing.Color.White;
             this.pChangeImageBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.pChangeImageBtn.ForeColor = System.Drawing.Color.Black;
             this.pChangeImageBtn.Location = new System.Drawing.Point(743, 26);
-            this.pChangeImageBtn.Name = "button1";
+            this.pChangeImageBtn.Name = "pChangeImageBtn";
             this.pChangeImageBtn.Size = new System.Drawing.Size(99, 25);
             this.pChangeImageBtn.TabIndex = 7;
             this.pChangeImageBtn.Text = "Change Image";
             this.pChangeImageBtn.UseVisualStyleBackColor = false;
             this.pChangeImageBtn.Visible = false;
             this.pChangeImageBtn.Click += new System.EventHandler(this.OnChangeImage);
+            // 
+            // pSaveWorkerThread
+            // 
+            this.pSaveWorkerThread.WorkerReportsProgress = true;
+            this.pSaveWorkerThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.OnSaveBegin);
+            this.pSaveWorkerThread.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.OnSaveProgress);
+            this.pSaveWorkerThread.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.OnSaveComplete);
             // 
             // MainWindow
             // 
@@ -463,6 +488,7 @@ namespace Orion.Window
         private ToolStripMenuItem searchToolStripMenuItem;
         private Button pUpdateDataBtn;
         private Button pChangeImageBtn;
+        private System.ComponentModel.BackgroundWorker pSaveWorkerThread;
     }
 }
 
