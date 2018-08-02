@@ -225,7 +225,7 @@ namespace Orion.Window
             this.addToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.addToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.addToolStripMenuItem.Name = "addToolStripMenuItem";
-            this.addToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
+            this.addToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.addToolStripMenuItem.Text = "Add";
             // 
             // removeToolStripMenuItem
@@ -234,8 +234,9 @@ namespace Orion.Window
             this.removeToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.removeToolStripMenuItem.Name = "removeToolStripMenuItem";
             this.removeToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.removeToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
+            this.removeToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.removeToolStripMenuItem.Text = "Remove";
+            this.removeToolStripMenuItem.Click += new System.EventHandler(this.OnRemoveFile);
             // 
             // copyToolStripMenuItem
             // 
@@ -243,7 +244,7 @@ namespace Orion.Window
             this.copyToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
             this.copyToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.copyToolStripMenuItem.Text = "Copy";
             // 
             // pasteToolStripMenuItem
@@ -252,7 +253,7 @@ namespace Orion.Window
             this.pasteToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
             this.pasteToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
+            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.pasteToolStripMenuItem.Text = "Paste";
             // 
             // allNodesToolStripMenuItem
@@ -263,7 +264,7 @@ namespace Orion.Window
             this.collapseToolStripMenuItem});
             this.allNodesToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.allNodesToolStripMenuItem.Name = "allNodesToolStripMenuItem";
-            this.allNodesToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
+            this.allNodesToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.allNodesToolStripMenuItem.Text = "All Nodes";
             // 
             // expandToolStripMenuItem

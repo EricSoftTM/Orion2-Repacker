@@ -239,9 +239,13 @@ namespace Orion.Window
 
         private void OnWindowClosing(object sender, FormClosingEventArgs e)
         {
-            if (MessageBox.Show(this, "Are you sure you want to exit?", this.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+            // Only ask for confirmation when the user has files open.
+            if (this.pTreeView.Nodes.Count > 0)
             {
-                e.Cancel = true;
+                if (MessageBox.Show(this, "Are you sure you want to exit?", this.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                {
+                    e.Cancel = true;
+                }
             }
         }
 
@@ -395,6 +399,41 @@ namespace Orion.Window
             } else
             {
                 NotifyMessage("There is no package to be reloaded.", MessageBoxIcon.Warning);
+            }
+        }
+
+        private void OnRemoveFile(object sender, EventArgs e)
+        {
+            PackNode pNode = this.pTreeView.SelectedNode as PackNode;
+            if (pNode != null)
+            {
+                PackNode pRoot = this.pTreeView.Nodes[0] as PackNode;
+                if (pRoot != null)
+                {
+                    PackStreamVerBase pStream = pRoot.Tag as PackStreamVerBase;
+                    if (pStream != null)
+                    {
+                        PackFileEntry pEntry = pNode.Tag as PackFileEntry;
+                        if (pEntry != null)
+                        {
+                            pStream.GetFileList().Remove(pEntry);
+
+                            pNode.Parent.Nodes.Remove(pNode);
+                        } else if (pNode.Tag is PackNodeList)
+                        {
+                            string sWarning = "WARNING: You are about to delete an entire directory!"
+                                    + "\r\nBy deleting this directory, all inner directories and entries will also be removed."
+                                    + "\r\n\r\nAre you sure you want to continue?";
+                            if (MessageBox.Show(this, sWarning, this.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                            {
+                                // Recursively remove all inner directories and entries.
+                                RemoveDirectory(pNode, pStream);
+                                // Remove the node and all of its children from tree.
+                                pNode.Remove();
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -625,6 +664,39 @@ namespace Orion.Window
             } else
             {
                 NotifyMessage("There is no package to be unloaded.", MessageBoxIcon.Warning);
+            }
+        }
+
+        private void RemoveDirectory(PackNode pNode, PackStreamVerBase pStream)
+        {
+            if (pNode.Nodes.Count == 0)
+            {
+                if (pNode.Tag is PackNodeList)
+                {
+                    PackNodeList pList = pNode.Tag as PackNodeList;
+
+                    foreach (KeyValuePair<string, PackNodeList> pChild in pList.Children)
+                    {
+                        pNode.Nodes.Add(new PackNode(pChild.Value, pChild.Key));
+                    }
+
+                    foreach (PackFileEntry pEntry in pList.Entries.Values)
+                    {
+                        pNode.Nodes.Add(new PackNode(pEntry, pEntry.TreeName));
+                    }
+
+                    pList.Entries.Clear();
+                }
+            }
+
+            foreach (PackNode pChild in pNode.Nodes)
+            {
+                RemoveDirectory(pChild, pStream);
+            }
+
+            if (pNode.Tag is PackFileEntry)
+            {
+                pStream.GetFileList().Remove(pNode.Tag as PackFileEntry);
             }
         }
 
