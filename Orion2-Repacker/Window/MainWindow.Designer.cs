@@ -111,7 +111,6 @@ namespace Orion.Window
             this.collapseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.importToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.searchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -226,7 +225,7 @@ namespace Orion.Window
             this.addToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.addToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.addToolStripMenuItem.Name = "addToolStripMenuItem";
-            this.addToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.addToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.addToolStripMenuItem.Text = "Add";
             // 
             // removeToolStripMenuItem
@@ -234,9 +233,8 @@ namespace Orion.Window
             this.removeToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.removeToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.removeToolStripMenuItem.Name = "removeToolStripMenuItem";
-            this.removeToolStripMenuItem.ShortcutKeyDisplayString = "DEL";
-            this.removeToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.Delete;
-            this.removeToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.removeToolStripMenuItem.ShortcutKeyDisplayString = "";
+            this.removeToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.removeToolStripMenuItem.Text = "Remove";
             // 
             // copyToolStripMenuItem
@@ -245,7 +243,7 @@ namespace Orion.Window
             this.copyToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
             this.copyToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.copyToolStripMenuItem.Text = "Copy";
             // 
             // pasteToolStripMenuItem
@@ -254,7 +252,7 @@ namespace Orion.Window
             this.pasteToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
             this.pasteToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.pasteToolStripMenuItem.Text = "Paste";
             // 
             // allNodesToolStripMenuItem
@@ -265,7 +263,7 @@ namespace Orion.Window
             this.collapseToolStripMenuItem});
             this.allNodesToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.allNodesToolStripMenuItem.Name = "allNodesToolStripMenuItem";
-            this.allNodesToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.allNodesToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.allNodesToolStripMenuItem.Text = "All Nodes";
             // 
             // expandToolStripMenuItem
@@ -290,7 +288,6 @@ namespace Orion.Window
             // 
             this.toolsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.exportToolStripMenuItem,
-            this.importToolStripMenuItem,
             this.searchToolStripMenuItem});
             this.toolsToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
@@ -305,14 +302,6 @@ namespace Orion.Window
             this.exportToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
             this.exportToolStripMenuItem.Text = "Export";
             this.exportToolStripMenuItem.Click += new System.EventHandler(this.OnExport);
-            // 
-            // importToolStripMenuItem
-            // 
-            this.importToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
-            this.importToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
-            this.importToolStripMenuItem.Name = "importToolStripMenuItem";
-            this.importToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
-            this.importToolStripMenuItem.Text = "Import";
             // 
             // searchToolStripMenuItem
             // 
@@ -446,6 +435,7 @@ namespace Orion.Window
             this.ForeColor = System.Drawing.SystemColors.ControlDarkDark;
             this.Name = "MainWindow";
             this.Text = "Orion2 Repacker";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.OnWindowClosing);
             this.SizeChanged += new System.EventHandler(this.OnChangeWindowSize);
             this.pMenuStrip.ResumeLayout(false);
             this.pMenuStrip.PerformLayout();
@@ -484,7 +474,6 @@ namespace Orion.Window
         private ToolStripMenuItem expandToolStripMenuItem;
         private ToolStripMenuItem collapseToolStripMenuItem;
         private ToolStripMenuItem exportToolStripMenuItem;
-        private ToolStripMenuItem importToolStripMenuItem;
         private ToolStripMenuItem searchToolStripMenuItem;
         private Button pUpdateDataBtn;
         private Button pChangeImageBtn;

@@ -237,6 +237,14 @@ namespace Orion.Window
             Application.Exit();
         }
 
+        private void OnWindowClosing(object sender, FormClosingEventArgs e)
+        {
+            if (MessageBox.Show(this, "Are you sure you want to exit?", this.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+            {
+                e.Cancel = true;
+            }
+        }
+
         private void OnExpandNodes(object sender, EventArgs e)
         {
             // Should we ever expand all unselected nodes? It'd be awful to parse so many at once :/
@@ -263,15 +271,20 @@ namespace Orion.Window
                         {
                             Title = "Select the destination to export the file",
                             FileName = sName,
-                            Filter = string.Format("{0} File (*.{1})|*.{1}", sExtension.ToUpper(), sExtension)
+                            Filter = string.Format("{0} File|*.{1}", sExtension.ToUpper(), sExtension)
                         };
 
                         if (pDialog.ShowDialog() == DialogResult.OK)
                         {
                             File.WriteAllBytes(pDialog.FileName, pData);
+
+                            NotifyMessage(string.Format("Successfully exported to {0}", pDialog.FileName), MessageBoxIcon.Information);
                         }
                     }
                 }
+            } else
+            {
+                NotifyMessage("Please select a file to export.", MessageBoxIcon.Asterisk);
             }
         }
 
