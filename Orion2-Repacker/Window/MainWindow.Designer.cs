@@ -104,6 +104,7 @@ namespace Orion.Window
             this.pImageData = new System.Windows.Forms.PictureBox();
             this.pImagePanel = new System.Windows.Forms.Panel();
             this.pUpdateDataBtn = new System.Windows.Forms.Button();
+            this.pChangeImageBtn = new System.Windows.Forms.Button();
             this.pMenuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pImageData)).BeginInit();
             this.pImagePanel.SuspendLayout();
@@ -226,7 +227,7 @@ namespace Orion.Window
             this.copyToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
             this.copyToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
             this.copyToolStripMenuItem.Text = "Copy";
             // 
             // pasteToolStripMenuItem
@@ -235,7 +236,7 @@ namespace Orion.Window
             this.pasteToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
             this.pasteToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
             this.pasteToolStripMenuItem.Text = "Paste";
             // 
             // allNodesToolStripMenuItem
@@ -390,12 +391,27 @@ namespace Orion.Window
             this.pUpdateDataBtn.Visible = false;
             this.pUpdateDataBtn.Click += new System.EventHandler(this.OnSaveChanges);
             // 
+            // button1
+            // 
+            this.pChangeImageBtn.BackColor = System.Drawing.Color.White;
+            this.pChangeImageBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.pChangeImageBtn.ForeColor = System.Drawing.Color.Black;
+            this.pChangeImageBtn.Location = new System.Drawing.Point(743, 26);
+            this.pChangeImageBtn.Name = "button1";
+            this.pChangeImageBtn.Size = new System.Drawing.Size(99, 25);
+            this.pChangeImageBtn.TabIndex = 7;
+            this.pChangeImageBtn.Text = "Change Image";
+            this.pChangeImageBtn.UseVisualStyleBackColor = false;
+            this.pChangeImageBtn.Visible = false;
+            this.pChangeImageBtn.Click += new System.EventHandler(this.OnChangeImage);
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(180)))), ((int)(((byte)(180)))));
             this.ClientSize = new System.Drawing.Size(1045, 644);
+            this.Controls.Add(this.pChangeImageBtn);
             this.Controls.Add(this.pUpdateDataBtn);
             this.Controls.Add(this.pImagePanel);
             this.Controls.Add(this.pTextData);
@@ -446,6 +462,7 @@ namespace Orion.Window
         private ToolStripMenuItem importToolStripMenuItem;
         private ToolStripMenuItem searchToolStripMenuItem;
         private Button pUpdateDataBtn;
+        private Button pChangeImageBtn;
     }
 }
 

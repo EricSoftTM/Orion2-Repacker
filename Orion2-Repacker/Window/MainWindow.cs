@@ -49,12 +49,13 @@ namespace Orion.Window
             this.pMenuStrip.Renderer = new MenuRenderer();
 
             this.pPrevSize = this.Size;
-            this.OnChangeWindowSize(null, null);
 
             this.sHeaderUOL = "";
 
             this.pNodeList = null;
             this.pDataMappedMemFile = null;
+
+            this.UpdatePanel("", null);
         }
 
         private void InitializeTree(PackStreamVerBase pStream)
@@ -122,6 +123,45 @@ namespace Orion.Window
             pAbout.ShowDialog();
         }
 
+        private void OnChangeImage(object sender, EventArgs e)
+        {
+            if (!this.pChangeImageBtn.Visible)
+            {
+                return;
+            }
+
+            PackNode pNode = this.pTreeView.SelectedNode as PackNode;
+            if (pNode != null && pNode.Data != null)
+            {
+                PackFileEntry pEntry = pNode.Tag as PackFileEntry;
+
+                if (pEntry != null)
+                {
+                    string sExtension = pEntry.TreeName.Split('.')[1];
+
+                    OpenFileDialog pDialog = new OpenFileDialog
+                    {
+                        Title = "Select the new image",
+                        Filter = string.Format("{0} Image|*.{0}", sExtension.ToUpper()),
+                        Multiselect = false
+                    };
+
+                    if (pDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        byte[] pData = File.ReadAllBytes(pDialog.FileName);
+
+                        if (pNode.Data != pData)
+                        {
+                            pEntry.Data = pData;
+                            pEntry.Changed = true;
+
+                            UpdatePanel(sExtension, pData);
+                        }
+                    }
+                }
+            }
+        }
+
         private void OnChangeWindowSize(object sender, EventArgs e)
         {
             int nHeight = (this.Size.Height - this.pPrevSize.Height);
@@ -133,8 +173,6 @@ namespace Orion.Window
                 Width = this.pImagePanel.Width + nWidth
             };
 
-            RenderImageData();
-
             this.pTreeView.Size = new Size
             {
                 Height = this.pTreeView.Height + nHeight,
@@ -142,6 +180,9 @@ namespace Orion.Window
             };
 
             this.pPrevSize = this.Size;
+            this.pImageData.Size = this.pImagePanel.Size;
+
+            RenderImageData(true);
         }
 
         private void OnCollapseNodes(object sender, EventArgs e)
@@ -509,8 +550,7 @@ namespace Orion.Window
                     this.pDataMappedMemFile = null;
                 }
 
-                this.pTextData.Visible = false;
-                this.pImageData.Visible = false;
+                this.UpdatePanel("", null);
 
                 System.GC.Collect();
             } else
@@ -519,14 +559,34 @@ namespace Orion.Window
             }
         }
 
-        private void RenderImageData()
+        private void RenderImageData(bool bChange)
         {
             this.pImageData.Visible = this.pImagePanel.Visible;
 
             if (this.pImageData.Visible)
             {
-                this.pImageData.SizeMode = this.pImageData.Image.Size.Height > this.pImagePanel.Height
-                    || this.pImageData.Image.Size.Width > this.pImagePanel.Width ? PictureBoxSizeMode.Zoom : PictureBoxSizeMode.Normal;
+                // If the size of the bitmap image is bigger than the actual panel,
+                // then we adjust the image sizing mode to zoom the image in order
+                // to fit the full image within the current size of the panel.
+                if (this.pImageData.Image.Size.Height > this.pImagePanel.Size.Height || this.pImageData.Image.Size.Width > this.pImagePanel.Size.Width)
+                {
+                    // If we went from selecting a small image to selecting a big image,
+                    // then adjust the panel and data to fit the size of the new bitmap.
+                    if (!bChange)
+                    {
+                        this.OnChangeWindowSize(null, null);
+                    }
+
+                    // Since the image is too big, scale it in zoom mode to fit it.
+                    this.pImageData.SizeMode = PictureBoxSizeMode.Zoom;
+                } else
+                {
+                    // Since the image is less than or equal to the size of the panel,
+                    // we are able to render the image as-is with no additional scaling.
+                    this.pImageData.SizeMode = PictureBoxSizeMode.Normal;
+                }
+
+                // Render the new size changes.
                 this.pImageData.Update();
             }
         }
@@ -642,13 +702,18 @@ namespace Orion.Window
 
         private void UpdatePanel(string sExtension, byte[] pBuffer)
         {
-            this.pEntryValue.Text = string.Format("{0} File", sExtension.ToUpper());
+            if (!string.IsNullOrEmpty(sExtension))
+                this.pEntryValue.Text = string.Format("{0} File", sExtension.ToUpper());
+            else
+                this.pEntryValue.Text = "Empty";
 
             this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua")
                 || sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
                 || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"));
             this.pUpdateDataBtn.Visible = this.pTextData.Visible;
+
             this.pImagePanel.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
+            this.pChangeImageBtn.Visible = this.pImagePanel.Visible;
 
             if (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua"))
             {
@@ -689,7 +754,7 @@ namespace Orion.Window
                 */
             }
 
-            RenderImageData();
+            RenderImageData(false);
         }
 
         private static string Dir_BackSlashToSlash(string sDir)
