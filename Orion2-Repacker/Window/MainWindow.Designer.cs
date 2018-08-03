@@ -246,6 +246,7 @@ namespace Orion.Window
             this.copyToolStripMenuItem.ShortcutKeyDisplayString = "";
             this.copyToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.copyToolStripMenuItem.Text = "Copy";
+            this.copyToolStripMenuItem.Click += new System.EventHandler(this.OnCopyNode);
             // 
             // pasteToolStripMenuItem
             // 
@@ -255,6 +256,7 @@ namespace Orion.Window
             this.pasteToolStripMenuItem.ShortcutKeyDisplayString = "";
             this.pasteToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.pasteToolStripMenuItem.Text = "Paste";
+            this.pasteToolStripMenuItem.Click += new System.EventHandler(this.OnPasteNode);
             // 
             // allNodesToolStripMenuItem
             // 

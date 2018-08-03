@@ -21,8 +21,11 @@ using System.Collections.Generic;
 
 namespace Orion.Crypto.Common
 {
+    [Serializable]
     public class PackFileEntry : IComparable<PackFileEntry>
     {
+        public const string DATA_FORMAT = "Pack.Node.FileEntry";
+
         public int Index { get; set; } // The index of the file in the lookup table
         public string Hash { get; set; } // A hash assigned to all files in the directory
         public string Name { get; set; } // The full name of the file (path/name.ext)
@@ -30,6 +33,20 @@ namespace Orion.Crypto.Common
         public PackFileHeaderVerBase FileHeader { get; set; } // The file information (size, offset, etc.)
         public byte[] Data { get; set; } // The raw, decrypted, and current data buffer of the file
         public bool Changed { get; set; } // If the data has been modified in the repacker
+
+        public PackFileEntry CreateCopy(byte[] pData = null)
+        {
+            return new PackFileEntry
+            {
+                Index = int.MaxValue,
+                Hash = this.Hash,
+                Name = this.Name,
+                TreeName = this.TreeName,
+                //FileHeader = this.FileHeader,
+                Data = (pData == null ? this.Data : pData),
+                Changed = true
+            };
+        }
 
         public int CompareTo(PackFileEntry pObj)
         {

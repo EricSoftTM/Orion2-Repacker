@@ -16,20 +16,26 @@
  */
 
 using Orion.Crypto.Common;
+using System;
 using System.Collections.Generic;
 
 namespace Orion.Window.Common
 {
+    [Serializable]
     public class PackNodeList
     {
+        public const string DATA_FORMAT = "Pack.Node.FileList";
+
         private readonly Dictionary<string, PackNodeList> mChildren; // <directory, list of nodes>
         private readonly Dictionary<string, PackFileEntry> mEntries; // <file name, file entry>
 
         public Dictionary<string, PackNodeList> Children { get { return mChildren; } }
         public Dictionary<string, PackFileEntry> Entries { get { return mEntries; } }
+        public string Directory { get; private set; }
 
-        public PackNodeList()
+        public PackNodeList(string sDir)
         {
+            this.Directory = sDir;
             this.mChildren = new Dictionary<string, PackNodeList>();
             this.mEntries = new Dictionary<string, PackFileEntry>();
         }

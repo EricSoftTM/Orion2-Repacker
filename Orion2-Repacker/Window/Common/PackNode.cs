@@ -16,6 +16,7 @@
  */
 
 using Orion.Crypto.Common;
+using System.Text;
 using System.Windows.Forms;
 
 namespace Orion.Window.Common
@@ -30,6 +31,35 @@ namespace Orion.Window.Common
             this.Name = sName;
             this.Text = sName;
             this.Tag = pItem;
+        }
+
+        /* Generate the full current path of this node within the tree */
+        public string Path
+        {
+            get
+            {
+                string[] aPath = new string[this.Level];
+
+                TreeNode pNode = this;
+                for (int i = 0; i < aPath.Length; i++)
+                {
+                    aPath[i] = pNode.Name;
+
+                    pNode = pNode.Parent;
+                    if (pNode == null)
+                    {
+                        break;
+                    }
+                }
+
+                StringBuilder sPath = new StringBuilder();
+                for (int i = aPath.Length - 1; i >= 0; i--)
+                {
+                    sPath.Append(aPath[i]);
+                }
+
+                return sPath.ToString();
+            }
         }
 
         /* Return the decrypted data block from the entry */

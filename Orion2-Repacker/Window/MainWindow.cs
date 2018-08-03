@@ -61,6 +61,21 @@ namespace Orion.Window
             this.UpdatePanel("", null);
         }
 
+        private void AddFileEntry(PackFileEntry pEntry)
+        {
+            PackNode pRoot = this.pTreeView.Nodes[0] as PackNode;
+
+            if (pRoot != null)
+            {
+                PackStreamVerBase pStream = pRoot.Tag as PackStreamVerBase;
+
+                if (pStream != null)
+                {
+                    pStream.GetFileList().Add(pEntry);
+                }
+            }
+        }
+
         private void InitializeTree(PackStreamVerBase pStream)
         {
             // Insert the root node (file)
@@ -71,7 +86,7 @@ namespace Orion.Window
             {
                 this.pNodeList.InternalRelease();
             }
-            this.pNodeList = new PackNodeList();
+            this.pNodeList = new PackNodeList("/");
 
             foreach (PackFileEntry pEntry in pStream.GetFileList())
             {
@@ -85,7 +100,7 @@ namespace Orion.Window
                         string sDir = sPath.Substring(0, sPath.IndexOf('/') + 1);
                         if (!pCurList.Children.ContainsKey(sDir))
                         {
-                            pCurList.Children.Add(sDir, new PackNodeList());
+                            pCurList.Children.Add(sDir, new PackNodeList(sDir));
                             if (pCurList == pNodeList)
                             {
                                 this.pTreeView.Nodes[0].Nodes.Add(new PackNode(pCurList.Children[sDir], sDir));
@@ -193,6 +208,50 @@ namespace Orion.Window
             this.pTreeView.CollapseAll();
         }
 
+        private void OnCopyNode(object sender, EventArgs e)
+        {
+            PackNode pNode = this.pTreeView.SelectedNode as PackNode;
+
+            if (pNode != null)
+            {
+                PackFileEntry pEntry = pNode.Tag as PackFileEntry;
+
+                if (pEntry != null)
+                {
+                    // Clear any current data from clipboard.
+                    Clipboard.Clear();
+                    // Copy the new copied entry object to clipboard.
+                    Clipboard.SetData(PackFileEntry.DATA_FORMAT, pEntry.CreateCopy());
+                } else
+                {
+                    PackNodeList pList = pNode.Tag as PackNodeList;
+
+                    if (pList != null)
+                    {
+                        // Currently, for memory effieciency's sake, we will only copy
+                        // the entries of this directory, and not recursively copy all
+                        // sub-directories and their own entries.
+
+                        PackNodeList pListCopy = new PackNodeList(pList.Directory);
+                        foreach (PackFileEntry pChild in pList.Entries.Values)
+                        {
+                            // Decrypt the data because we could potentially be moving
+                            // the object across repacker instances.
+                            byte[] pBlock = CryptoMan.DecryptData(pChild.FileHeader, this.pDataMappedMemFile);
+
+                            // Add a completely cloned reference of this entry, with a
+                            // new decrypted data block assigned and changed marked true.
+                            pListCopy.Entries.Add(pChild.TreeName, pChild.CreateCopy(pBlock));
+                        }
+
+                        // Finally, copy the new node list to clipboard.
+                        Clipboard.Clear();
+                        Clipboard.SetData(PackNodeList.DATA_FORMAT, pListCopy);
+                    }
+                }
+            }
+        }
+
         private void OnDoubleClickNode(object sender, TreeNodeMouseClickEventArgs e)
         {
             PackNode pNode = pTreeView.SelectedNode as PackNode;
@@ -237,21 +296,8 @@ namespace Orion.Window
             Application.Exit();
         }
 
-        private void OnWindowClosing(object sender, FormClosingEventArgs e)
-        {
-            // Only ask for confirmation when the user has files open.
-            if (this.pTreeView.Nodes.Count > 0)
-            {
-                if (MessageBox.Show(this, "Are you sure you want to exit?", this.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
-                {
-                    e.Cancel = true;
-                }
-            }
-        }
-
         private void OnExpandNodes(object sender, EventArgs e)
         {
-            // Should we ever expand all unselected nodes? It'd be awful to parse so many at once :/
             this.pTreeView.ExpandAll();
         }
 
@@ -374,6 +420,82 @@ namespace Orion.Window
             }
         }
 
+        private void OnPasteNode(object sender, EventArgs e)
+        {
+            IDataObject pData = Clipboard.GetDataObject();
+            if (pData == null)
+            {
+                return;
+            }
+
+            PackNode pNode = this.pTreeView.SelectedNode as PackNode;
+            if (pNode != null)
+            {
+                if (pNode.Tag is PackFileEntry) //wtf are they thinking?
+                {
+                    NotifyMessage("Please select a directory to paste into!", MessageBoxIcon.Exclamation);
+                    return;
+                }
+
+                object pObj;
+                if (pData.GetDataPresent(PackFileEntry.DATA_FORMAT))
+                {
+                    pObj = (PackFileEntry)pData.GetData(PackFileEntry.DATA_FORMAT);
+                }
+                else if (pData.GetDataPresent(PackNodeList.DATA_FORMAT))
+                {
+                    pObj = (PackNodeList)pData.GetData(PackNodeList.DATA_FORMAT);
+                } else
+                {
+                    NotifyMessage("No files or directories are currently copied to clipboard.", MessageBoxIcon.Exclamation);
+                    return;
+                }
+
+                PackNodeList pList;
+                if (pNode.Level == 0)
+                {
+                    // If they're trying to add to the root of the file,
+                    // then just use the root node list of this tree.
+                    pList = this.pNodeList;
+                } else
+                {
+                    pList = pNode.Tag as PackNodeList;
+                }
+
+                if (pList != null && pObj != null)
+                {
+                    if (pObj is PackFileEntry)
+                    {
+                        PackFileEntry pEntry = pObj as PackFileEntry;
+
+                        AddFileEntry(pEntry);
+                        pList.Entries.Add(pEntry.TreeName, pEntry);
+
+                        PackNode pChild = new PackNode(pEntry, pEntry.TreeName);
+                        pNode.Nodes.Add(pChild);
+
+                        pEntry.Name = pChild.Path;
+                    } else if (pObj is PackNodeList)
+                    {
+                        PackNodeList pChildList = pObj as PackNodeList;
+
+                        PackNode pChild = new PackNode(pChildList, pChildList.Directory);
+                        pList.Children.Add(pChildList.Directory, pChildList);
+                        pNode.Nodes.Add(pChild);
+
+                        foreach (PackFileEntry pEntry in pChildList.Entries.Values)
+                        {
+                            AddFileEntry(pEntry);
+                            PackNode pListNode = new PackNode(pEntry, pEntry.TreeName);
+                            pChild.Nodes.Add(pListNode);
+
+                            pEntry.Name = pListNode.Path;
+                        }
+                    }
+                }
+            }
+        }
+
         private void OnReloadFile(object sender, EventArgs e)
         {
             if (this.pNodeList != null)
@@ -408,7 +530,7 @@ namespace Orion.Window
             if (pNode != null)
             {
                 PackNode pRoot = this.pTreeView.Nodes[0] as PackNode;
-                if (pRoot != null)
+                if (pRoot != null && pNode != pRoot)
                 {
                     PackStreamVerBase pStream = pRoot.Tag as PackStreamVerBase;
                     if (pStream != null)
@@ -418,6 +540,13 @@ namespace Orion.Window
                         {
                             pStream.GetFileList().Remove(pEntry);
 
+                            if (pNode.Parent == pRoot as TreeNode)
+                            {
+                                this.pNodeList.Entries.Remove(pEntry.TreeName);
+                            } else
+                            {
+                                (pNode.Parent.Tag as PackNodeList).Entries.Remove(pEntry.TreeName);
+                            }
                             pNode.Parent.Nodes.Remove(pNode);
                         } else if (pNode.Tag is PackNodeList)
                         {
@@ -428,6 +557,14 @@ namespace Orion.Window
                             {
                                 // Recursively remove all inner directories and entries.
                                 RemoveDirectory(pNode, pStream);
+                                // Remove the entire node list child from the parent list.
+                                if (pNode.Parent == pRoot as TreeNode)
+                                {
+                                    this.pNodeList.Children.Remove(pNode.Name);
+                                } else
+                                {
+                                    (pNode.Parent.Tag as PackNodeList).Children.Remove(pNode.Name);
+                                }
                                 // Remove the node and all of its children from tree.
                                 pNode.Remove();
                             }
@@ -627,9 +764,9 @@ namespace Orion.Window
                             // it's unchanged once they select a different node in the tree.
                             pNode.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
                         }
-
-                        UpdatePanel(pEntry.TreeName.Split('.')[1].ToLower(), pNode.Data);
                     }
+
+                    UpdatePanel(pEntry.TreeName.Split('.')[1].ToLower(), pNode.Data);
                 }
                 else if (pObj is PackStreamVerBase)
                 {
@@ -667,6 +804,18 @@ namespace Orion.Window
             }
         }
 
+        private void OnWindowClosing(object sender, FormClosingEventArgs e)
+        {
+            // Only ask for confirmation when the user has files open.
+            if (this.pTreeView.Nodes.Count > 0)
+            {
+                if (MessageBox.Show(this, "Are you sure you want to exit?", this.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                {
+                    e.Cancel = true;
+                }
+            }
+        }
+
         private void RemoveDirectory(PackNode pNode, PackStreamVerBase pStream)
         {
             if (pNode.Nodes.Count == 0)
@@ -685,6 +834,7 @@ namespace Orion.Window
                         pNode.Nodes.Add(new PackNode(pEntry, pEntry.TreeName));
                     }
 
+                    pList.Children.Clear();
                     pList.Entries.Clear();
                 }
             }
@@ -748,11 +898,11 @@ namespace Orion.Window
                 // Iterate all file entries that exist
                 foreach (PackFileEntry pEntry in aEntry)
                 {
+                    PackFileHeaderVerBase pHeader = pEntry.FileHeader;
+
                     // If the entry was modified, or is new, write the modified data block
                     if (pEntry.Changed)
                     {
-                        PackFileHeaderVerBase pHeader = pEntry.FileHeader;
-
                         // If the header is null (new entry), then create one
                         if (pHeader == null)
                         {
@@ -800,6 +950,9 @@ namespace Orion.Window
                         pHeader.SetCompressedFileSize(uCompressed);
                         pHeader.SetEncodedFileSize(uEncoded);
 
+                        // Update the Entry's index to the new current index
+                        pEntry.Index = nCurIndex;
+
                         nCurIndex++;
                         uOffset += pHeader.GetEncodedFileSize();
                     }
@@ -807,8 +960,6 @@ namespace Orion.Window
                     else
                     {
                         // Make sure the entry has a parsed file header from load
-                        PackFileHeaderVerBase pHeader = pEntry.FileHeader;
-
                         if (pHeader != null)
                         {
                             // Update the initial versioning before any future crypto calls
@@ -830,6 +981,9 @@ namespace Orion.Window
                                     pHeader.SetOffset(uOffset);
                                     // Write the original (completely encrypted) block of data to file
                                     pWriter.Write(pSrc);
+
+                                    // Update the Entry's index to the new current index
+                                    pEntry.Index = nCurIndex;
 
                                     nCurIndex++;
                                     uOffset += pHeader.GetEncodedFileSize();
