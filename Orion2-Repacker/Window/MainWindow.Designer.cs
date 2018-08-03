@@ -115,13 +115,14 @@ namespace Orion.Window
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pTreeView = new System.Windows.Forms.TreeView();
-            this.pEntryValue = new System.Windows.Forms.TextBox();
+            this.pEntryName = new System.Windows.Forms.TextBox();
             this.pTextData = new System.Windows.Forms.TextBox();
             this.pImageData = new System.Windows.Forms.PictureBox();
             this.pImagePanel = new System.Windows.Forms.Panel();
             this.pUpdateDataBtn = new System.Windows.Forms.Button();
             this.pChangeImageBtn = new System.Windows.Forms.Button();
             this.pSaveWorkerThread = new System.ComponentModel.BackgroundWorker();
+            this.pEntryValue = new System.Windows.Forms.Label();
             this.pMenuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pImageData)).BeginInit();
             this.pImagePanel.SuspendLayout();
@@ -225,7 +226,7 @@ namespace Orion.Window
             this.addToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.addToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.addToolStripMenuItem.Name = "addToolStripMenuItem";
-            this.addToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.addToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.addToolStripMenuItem.Text = "Add";
             // 
             // removeToolStripMenuItem
@@ -234,7 +235,7 @@ namespace Orion.Window
             this.removeToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.removeToolStripMenuItem.Name = "removeToolStripMenuItem";
             this.removeToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.removeToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.removeToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.removeToolStripMenuItem.Text = "Remove";
             this.removeToolStripMenuItem.Click += new System.EventHandler(this.OnRemoveFile);
             // 
@@ -244,7 +245,7 @@ namespace Orion.Window
             this.copyToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
             this.copyToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.copyToolStripMenuItem.Text = "Copy";
             this.copyToolStripMenuItem.Click += new System.EventHandler(this.OnCopyNode);
             // 
@@ -254,7 +255,7 @@ namespace Orion.Window
             this.pasteToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
             this.pasteToolStripMenuItem.ShortcutKeyDisplayString = "";
-            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.pasteToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.pasteToolStripMenuItem.Text = "Paste";
             this.pasteToolStripMenuItem.Click += new System.EventHandler(this.OnPasteNode);
             // 
@@ -266,7 +267,7 @@ namespace Orion.Window
             this.collapseToolStripMenuItem});
             this.allNodesToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.allNodesToolStripMenuItem.Name = "allNodesToolStripMenuItem";
-            this.allNodesToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.allNodesToolStripMenuItem.Size = new System.Drawing.Size(125, 22);
             this.allNodesToolStripMenuItem.Text = "All Nodes";
             // 
             // expandToolStripMenuItem
@@ -345,16 +346,17 @@ namespace Orion.Window
             this.pTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.OnSelectNode);
             this.pTreeView.NodeMouseDoubleClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.OnDoubleClickNode);
             // 
-            // pEntryValue
+            // pEntryName
             // 
-            this.pEntryValue.BackColor = System.Drawing.Color.White;
-            this.pEntryValue.ForeColor = System.Drawing.Color.Black;
-            this.pEntryValue.Location = new System.Drawing.Point(453, 27);
-            this.pEntryValue.Name = "pEntryValue";
-            this.pEntryValue.Size = new System.Drawing.Size(284, 20);
-            this.pEntryValue.TabIndex = 2;
-            this.pEntryValue.Text = "Empty";
-            this.pEntryValue.WordWrap = false;
+            this.pEntryName.BackColor = System.Drawing.Color.White;
+            this.pEntryName.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.pEntryName.ForeColor = System.Drawing.Color.Black;
+            this.pEntryName.Location = new System.Drawing.Point(453, 27);
+            this.pEntryName.Name = "pEntryName";
+            this.pEntryName.Size = new System.Drawing.Size(284, 23);
+            this.pEntryName.TabIndex = 2;
+            this.pEntryName.Visible = false;
+            this.pEntryName.WordWrap = false;
             // 
             // pTextData
             // 
@@ -422,17 +424,29 @@ namespace Orion.Window
             this.pSaveWorkerThread.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.OnSaveProgress);
             this.pSaveWorkerThread.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.OnSaveComplete);
             // 
+            // pEntryValue
+            // 
+            this.pEntryValue.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pEntryValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.pEntryValue.Location = new System.Drawing.Point(928, 0);
+            this.pEntryValue.Name = "pEntryValue";
+            this.pEntryValue.Size = new System.Drawing.Size(105, 24);
+            this.pEntryValue.TabIndex = 8;
+            this.pEntryValue.Text = "Empty";
+            this.pEntryValue.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(180)))), ((int)(((byte)(180)))));
             this.ClientSize = new System.Drawing.Size(1045, 644);
+            this.Controls.Add(this.pEntryValue);
             this.Controls.Add(this.pChangeImageBtn);
             this.Controls.Add(this.pUpdateDataBtn);
             this.Controls.Add(this.pImagePanel);
             this.Controls.Add(this.pTextData);
-            this.Controls.Add(this.pEntryValue);
+            this.Controls.Add(this.pEntryName);
             this.Controls.Add(this.pTreeView);
             this.Controls.Add(this.pMenuStrip);
             this.ForeColor = System.Drawing.SystemColors.ControlDarkDark;
@@ -459,7 +473,7 @@ namespace Orion.Window
         private System.Windows.Forms.ToolStripMenuItem pReloadMenuItem;
         private System.Windows.Forms.ToolStripMenuItem pUnloadMenuItem;
         private System.Windows.Forms.TreeView pTreeView;
-        private System.Windows.Forms.TextBox pEntryValue;
+        private System.Windows.Forms.TextBox pEntryName;
         private System.Windows.Forms.TextBox pTextData;
         private System.Windows.Forms.PictureBox pImageData;
         private System.Windows.Forms.Panel pImagePanel;
@@ -481,6 +495,7 @@ namespace Orion.Window
         private Button pUpdateDataBtn;
         private Button pChangeImageBtn;
         private System.ComponentModel.BackgroundWorker pSaveWorkerThread;
+        private Label pEntryValue;
     }
 }
 

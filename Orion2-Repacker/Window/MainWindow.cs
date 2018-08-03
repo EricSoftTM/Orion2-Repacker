@@ -58,7 +58,7 @@ namespace Orion.Window
             this.pDataMappedMemFile = null;
             this.pProgress = null;
 
-            this.UpdatePanel("", null);
+            this.UpdatePanel("Empty", null);
         }
 
         private void AddFileEntry(PackFileEntry pEntry)
@@ -514,9 +514,7 @@ namespace Orion.Window
                     this.pTreeView.Refresh();
 
                     InitializeTree(pStream);
-                    UpdatePanel("", null);
-
-                    this.pEntryValue.Text = "Empty";
+                    UpdatePanel("Empty", null);
                 }
             } else
             {
@@ -748,9 +746,12 @@ namespace Orion.Window
             {
                 object pObj = pNode.Tag;
 
+                this.pEntryName.Visible = true;
+                this.pEntryName.Text = pNode.Name;
+
                 if (pObj is PackNodeList)
                 {
-                    this.pEntryValue.Text = "Packed Directory";
+                    UpdatePanel("Packed Directory", null);
                 } else if (pObj is PackFileEntry)
                 {
                     PackFileEntry pEntry = pObj as PackFileEntry;
@@ -770,10 +771,10 @@ namespace Orion.Window
                 }
                 else if (pObj is PackStreamVerBase)
                 {
-                    this.pEntryValue.Text = "Packed Data File";
+                    UpdatePanel("Packed Data File", null);
                 } else
                 {
-                    this.pEntryValue.Text = "Empty";
+                    UpdatePanel("Empty", null);
                 }
             }
         }
@@ -795,7 +796,7 @@ namespace Orion.Window
                     this.pDataMappedMemFile = null;
                 }
 
-                this.UpdatePanel("", null);
+                this.UpdatePanel("Empty", null);
 
                 System.GC.Collect();
             } else
@@ -999,10 +1000,15 @@ namespace Orion.Window
 
         private void UpdatePanel(string sExtension, byte[] pBuffer)
         {
-            if (!string.IsNullOrEmpty(sExtension))
+            if (pBuffer == null)
+            {
+                this.pEntryValue.Text = sExtension;
+                this.pEntryName.Visible = false;
+            } else
+            {
                 this.pEntryValue.Text = string.Format("{0} File", sExtension.ToUpper());
-            else
-                this.pEntryValue.Text = "Empty";
+                this.pEntryName.Visible = true;
+            }
 
             this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua")
                 || sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
@@ -1012,44 +1018,49 @@ namespace Orion.Window
             this.pImagePanel.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
             this.pChangeImageBtn.Visible = this.pImagePanel.Visible;
 
-            if (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua"))
-            {
-                this.pTextData.Text = Encoding.UTF8.GetString(pBuffer);
-            } else if (sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
-                || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"))
+            if (this.pTextData.Visible)
             {
                 string sOutput = Encoding.UTF8.GetString(pBuffer);
-
-                try
-                {
-                    this.pTextData.Text = System.Xml.Linq.XDocument.Parse(sOutput).ToString();
-                } catch (Exception)
+                if (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua"))
                 {
                     this.pTextData.Text = sOutput;
                 }
-            } else if (sExtension.Equals("png")) {
-                Bitmap pImage;
-                using (MemoryStream pStream = new MemoryStream(pBuffer))
+                else
                 {
-                    pImage = new Bitmap(pStream);
+                    try
+                    {
+                        this.pTextData.Text = System.Xml.Linq.XDocument.Parse(sOutput).ToString();
+                    }
+                    catch (Exception)
+                    {
+                        this.pTextData.Text = sOutput;
+                    }
+                }
+            } else if (this.pImagePanel.Visible)
+            {
+                Bitmap pImage;
+                if (sExtension.Equals("png"))
+                {
+                    using (MemoryStream pStream = new MemoryStream(pBuffer))
+                    {
+                        pImage = new Bitmap(pStream);
+                    }
+                } else //if (sExtension.Equals("dds"))
+                {
+                    pImage = DDS.LoadImage(pBuffer);
                 }
 
                 this.pImageData.Image = pImage;
-            } else if (sExtension.Equals("dds")) {
-                this.pImageData.Image = DDS.LoadImage(pBuffer);
-            } else
-            {
-                this.pTextData.Visible = false;
-
-                /*
-                 * TODO:
-                 * *.nif, *.kf, and *.kfm files
-                 * Shaders/*.fxo - directx shader files?
-                 * PrecomputedTerrain/*.tok - mesh3d files? token files?
-                 * Gfx/*.gfx - graphics gen files?
-                 * Precompiled/luapack.o - object files?
-                */
             }
+
+            /*
+             * TODO:
+             * *.nif, *.kf, and *.kfm files
+             * Shaders/*.fxo - directx shader files?
+             * PrecomputedTerrain/*.tok - mesh3d files? token files?
+             * Gfx/*.gfx - graphics gen files?
+             * Precompiled/luapack.o - object files?
+            */
 
             RenderImageData(false);
         }
