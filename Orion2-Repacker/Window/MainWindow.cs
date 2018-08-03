@@ -20,6 +20,7 @@ using Orion.Crypto.Common;
 using Orion.Crypto.Stream;
 using Orion.Crypto.Stream.DDS;
 using Orion.Window.Common;
+using ScintillaNET;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -185,6 +186,12 @@ namespace Orion.Window
             int nHeight = (this.Size.Height - this.pPrevSize.Height);
             int nWidth = (this.Size.Width - this.pPrevSize.Width);
 
+            this.pTextData.Size = new Size
+            {
+                Height = this.pTextData.Height + nHeight,
+                Width = this.pTextData.Width + nWidth
+            };
+
             this.pImagePanel.Size = new Size
             {
                 Height = this.pImagePanel.Height + nHeight,
@@ -195,6 +202,12 @@ namespace Orion.Window
             {
                 Height = this.pTreeView.Height + nHeight,
                 Width = this.pTreeView.Width
+            };
+
+            this.pEntryValue.Location = new Point
+            {
+                X = this.pEntryValue.Location.X + nWidth,
+                Y = this.pEntryValue.Location.Y
             };
 
             this.pPrevSize = this.Size;
@@ -249,6 +262,9 @@ namespace Orion.Window
                         Clipboard.SetData(PackNodeList.DATA_FORMAT, pListCopy);
                     }
                 }
+            } else
+            {
+                NotifyMessage("Please select the node you wish to copy.", MessageBoxIcon.Exclamation);
             }
         }
 
@@ -569,6 +585,9 @@ namespace Orion.Window
                         }
                     }
                 }
+            } else
+            {
+                NotifyMessage("Please select a file or directory to remove.", MessageBoxIcon.Exclamation);
             }
         }
 
@@ -736,6 +755,12 @@ namespace Orion.Window
         private void OnSaveProgress(object sender, ProgressChangedEventArgs e)
         {
             this.pProgress.UpdateProgressBar(e.ProgressPercentage);
+        }
+
+        private void OnSearch(object sender, EventArgs e)
+        {
+            // TODO: Implement Scintilla SearchManager
+            NotifyMessage("Coming Soon in a future update!", MessageBoxIcon.Information);
         }
 
         private void OnSelectNode(object sender, TreeViewEventArgs e)
@@ -1020,22 +1045,7 @@ namespace Orion.Window
 
             if (this.pTextData.Visible)
             {
-                string sOutput = Encoding.UTF8.GetString(pBuffer);
-                if (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua"))
-                {
-                    this.pTextData.Text = sOutput;
-                }
-                else
-                {
-                    try
-                    {
-                        this.pTextData.Text = System.Xml.Linq.XDocument.Parse(sOutput).ToString();
-                    }
-                    catch (Exception)
-                    {
-                        this.pTextData.Text = sOutput;
-                    }
-                }
+                this.pTextData.Text = Encoding.UTF8.GetString(pBuffer);
             } else if (this.pImagePanel.Visible)
             {
                 Bitmap pImage;
@@ -1062,7 +1072,157 @@ namespace Orion.Window
              * Precompiled/luapack.o - object files?
             */
 
+            UpdateStyle(sExtension);
             RenderImageData(false);
+        }
+
+        private void UpdateStyle(string sExtension)
+        {
+            // Reset the styles
+            this.pTextData.StyleResetDefault();
+            this.pTextData.Styles[Style.Default].Font = "Consolas";
+            this.pTextData.Styles[Style.Default].Size = 10;
+            this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
+            this.pTextData.StyleClearAll();
+
+            if (sExtension.Equals("ini") || sExtension.Equals("nt"))
+            {
+                // Set the Styles to replicate Sublime
+                this.pTextData.StyleResetDefault();
+                this.pTextData.Styles[Style.Default].Font = "Consolas";
+                this.pTextData.Styles[Style.Default].Size = 10;
+                this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
+                this.pTextData.Styles[Style.Default].ForeColor = Color.White;
+                this.pTextData.StyleClearAll();
+            } else if (sExtension.Equals("lua"))
+            {
+                // Extracted from the Lua Scintilla lexer and SciTE .properties file
+
+                var alphaChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                var numericChars = "0123456789";
+                var accentedChars = "ŠšŒœŸÿÀàÁáÂâÃãÄäÅåÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖØøÙùÚúÛûÜüÝýÞþßö";
+
+                // Configuring the default style with properties
+                // we have common to every lexer style saves time.
+                this.pTextData.StyleResetDefault();
+                this.pTextData.Styles[Style.Default].Font = "Consolas";
+                this.pTextData.Styles[Style.Default].Size = 10;
+                this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
+                this.pTextData.Styles[Style.Default].ForeColor = Color.White;
+                this.pTextData.StyleClearAll();
+
+                // Configure the Lua lexer styles
+                this.pTextData.Styles[Style.Lua.Default].ForeColor = Color.Silver;
+                this.pTextData.Styles[Style.Lua.Comment].ForeColor = Color.FromArgb(0xD8D8D8);
+                this.pTextData.Styles[Style.Lua.CommentLine].ForeColor = Color.FromArgb(0xD8D8D8);
+                this.pTextData.Styles[Style.Lua.Number].ForeColor = Color.FromArgb(0xC48CFF);
+                this.pTextData.Styles[Style.Lua.Word].ForeColor = Color.FromArgb(0xFF007F);
+                this.pTextData.Styles[Style.Lua.Word2].ForeColor = Color.BlueViolet;
+                this.pTextData.Styles[Style.Lua.Word3].ForeColor = Color.FromArgb(0x52E3F6);
+                this.pTextData.Styles[Style.Lua.Word4].ForeColor = Color.FromArgb(0x52E3F6);
+                this.pTextData.Styles[Style.Lua.String].ForeColor = Color.FromArgb(0xECE47E);
+                this.pTextData.Styles[Style.Lua.Character].ForeColor = Color.FromArgb(0xECE47E);
+                this.pTextData.Styles[Style.Lua.LiteralString].ForeColor = Color.FromArgb(0xECE47E);
+                this.pTextData.Styles[Style.Lua.StringEol].BackColor = Color.Pink;
+                this.pTextData.Styles[Style.Lua.Operator].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Lua.Preprocessor].ForeColor = Color.Maroon;
+                this.pTextData.Lexer = Lexer.Lua;
+                this.pTextData.WordChars = alphaChars + numericChars + accentedChars;
+
+                // Keywords
+                this.pTextData.SetKeywords(0, "and break do else elseif end for function if in local nil not or repeat return then until while" + " false true" + " goto");
+                // Basic Functions
+                this.pTextData.SetKeywords(1, "assert collectgarbage dofile error _G getmetatable ipairs loadfile next pairs pcall print rawequal rawget rawset setmetatable tonumber tostring type _VERSION xpcall string table math coroutine io os debug" + " getfenv gcinfo load loadlib loadstring require select setfenv unpack _LOADED LUA_PATH _REQUIREDNAME package rawlen package bit32 utf8 _ENV");
+                // String Manipulation & Mathematical
+                this.pTextData.SetKeywords(2, "string.byte string.char string.dump string.find string.format string.gsub string.len string.lower string.rep string.sub string.upper table.concat table.insert table.remove table.sort math.abs math.acos math.asin math.atan math.atan2 math.ceil math.cos math.deg math.exp math.floor math.frexp math.ldexp math.log math.max math.min math.pi math.pow math.rad math.random math.randomseed math.sin math.sqrt math.tan" + " string.gfind string.gmatch string.match string.reverse string.pack string.packsize string.unpack table.foreach table.foreachi table.getn table.setn table.maxn table.pack table.unpack table.move math.cosh math.fmod math.huge math.log10 math.modf math.mod math.sinh math.tanh math.maxinteger math.mininteger math.tointeger math.type math.ult" + " bit32.arshift bit32.band bit32.bnot bit32.bor bit32.btest bit32.bxor bit32.extract bit32.replace bit32.lrotate bit32.lshift bit32.rrotate bit32.rshift" + " utf8.char utf8.charpattern utf8.codes utf8.codepoint utf8.len utf8.offset");
+                // Input and Output Facilities and System Facilities
+                this.pTextData.SetKeywords(3, "coroutine.create coroutine.resume coroutine.status coroutine.wrap coroutine.yield io.close io.flush io.input io.lines io.open io.output io.read io.tmpfile io.type io.write io.stdin io.stdout io.stderr os.clock os.date os.difftime os.execute os.exit os.getenv os.remove os.rename os.setlocale os.time os.tmpname" + " coroutine.isyieldable coroutine.running io.popen module package.loaders package.seeall package.config package.searchers package.searchpath" + " require package.cpath package.loaded package.loadlib package.path package.preload");
+
+                // Instruct the lexer to calculate folding
+                this.pTextData.SetProperty("fold", "1");
+                this.pTextData.SetProperty("fold.compact", "1");
+
+                // Configure a margin to display folding symbols
+                this.pTextData.Margins[2].Type = MarginType.Symbol;
+                this.pTextData.Margins[2].Mask = Marker.MaskFolders;
+                this.pTextData.Margins[2].Sensitive = true;
+                this.pTextData.Margins[2].Width = 20;
+
+                // Set colors for all folding markers
+                for (int i = 25; i <= 31; i++)
+                {
+                    this.pTextData.Markers[i].SetForeColor(SystemColors.ControlLightLight);
+                    this.pTextData.Markers[i].SetBackColor(SystemColors.ControlDark);
+                }
+
+                // Configure folding markers with respective symbols
+                this.pTextData.Markers[Marker.Folder].Symbol = MarkerSymbol.BoxPlus;
+                this.pTextData.Markers[Marker.FolderOpen].Symbol = MarkerSymbol.BoxMinus;
+                this.pTextData.Markers[Marker.FolderEnd].Symbol = MarkerSymbol.BoxPlusConnected;
+                this.pTextData.Markers[Marker.FolderMidTail].Symbol = MarkerSymbol.TCorner;
+                this.pTextData.Markers[Marker.FolderOpenMid].Symbol = MarkerSymbol.BoxMinusConnected;
+                this.pTextData.Markers[Marker.FolderSub].Symbol = MarkerSymbol.VLine;
+                this.pTextData.Markers[Marker.FolderTail].Symbol = MarkerSymbol.LCorner;
+
+                // Enable automatic folding
+                this.pTextData.AutomaticFold = (AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change);
+            } else
+            {
+                // Set the XML Lexer
+                this.pTextData.Lexer = Lexer.Xml;
+
+                // Show line numbers
+                this.pTextData.Margins[0].Width = 20;
+
+                // Enable folding
+                this.pTextData.SetProperty("fold", "1");
+                this.pTextData.SetProperty("fold.compact", "1");
+                this.pTextData.SetProperty("fold.html", "1");
+
+                // Use Margin 2 for fold markers
+                this.pTextData.Margins[2].Type = MarginType.Symbol;
+                this.pTextData.Margins[2].Mask = Marker.MaskFolders;
+                this.pTextData.Margins[2].Sensitive = true;
+                this.pTextData.Margins[2].Width = 20;
+
+                // Reset folder markers
+                for (int i = Marker.FolderEnd; i <= Marker.FolderOpen; i++)
+                {
+                    this.pTextData.Markers[i].SetForeColor(SystemColors.ControlLightLight);
+                    this.pTextData.Markers[i].SetBackColor(SystemColors.ControlDark);
+                }
+
+                // Style the folder markers
+                this.pTextData.Markers[Marker.Folder].Symbol = MarkerSymbol.BoxPlus;
+                this.pTextData.Markers[Marker.Folder].SetBackColor(SystemColors.ControlText);
+                this.pTextData.Markers[Marker.FolderOpen].Symbol = MarkerSymbol.BoxMinus;
+                this.pTextData.Markers[Marker.FolderEnd].Symbol = MarkerSymbol.BoxPlusConnected;
+                this.pTextData.Markers[Marker.FolderEnd].SetBackColor(SystemColors.ControlText);
+                this.pTextData.Markers[Marker.FolderMidTail].Symbol = MarkerSymbol.TCorner;
+                this.pTextData.Markers[Marker.FolderOpenMid].Symbol = MarkerSymbol.BoxMinusConnected;
+                this.pTextData.Markers[Marker.FolderSub].Symbol = MarkerSymbol.VLine;
+                this.pTextData.Markers[Marker.FolderTail].Symbol = MarkerSymbol.LCorner;
+
+                // Enable automatic folding
+                this.pTextData.AutomaticFold = AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change;
+
+                // Set the Styles to replicate Sublime
+                this.pTextData.StyleResetDefault();
+                this.pTextData.Styles[Style.Default].Font = "Courier";
+                this.pTextData.Styles[Style.Default].Size = 10;
+                this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
+                this.pTextData.StyleClearAll();
+                this.pTextData.Styles[Style.Xml.XmlStart].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Xml.XmlEnd].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Xml.Other].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Xml.Attribute].ForeColor = Color.FromArgb(0xA7EC21);
+                this.pTextData.Styles[Style.Xml.Entity].ForeColor = Color.FromArgb(0xA7EC21);
+                this.pTextData.Styles[Style.Xml.Comment].ForeColor = Color.FromArgb(0xD8D8D8);
+                this.pTextData.Styles[Style.Xml.Tag].ForeColor = Color.FromArgb(0xFF007F);
+                this.pTextData.Styles[Style.Xml.TagEnd].ForeColor = Color.FromArgb(0xFF007F);
+                this.pTextData.Styles[Style.Xml.DoubleString].ForeColor = Color.FromArgb(0xECE47E);
+                this.pTextData.Styles[Style.Xml.SingleString].ForeColor = Color.FromArgb(0xECE47E);
+            }
         }
 
         private static string Dir_BackSlashToSlash(string sDir)

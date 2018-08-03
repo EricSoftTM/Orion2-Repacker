@@ -116,13 +116,13 @@ namespace Orion.Window
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pTreeView = new System.Windows.Forms.TreeView();
             this.pEntryName = new System.Windows.Forms.TextBox();
-            this.pTextData = new System.Windows.Forms.TextBox();
             this.pImageData = new System.Windows.Forms.PictureBox();
             this.pImagePanel = new System.Windows.Forms.Panel();
             this.pUpdateDataBtn = new System.Windows.Forms.Button();
             this.pChangeImageBtn = new System.Windows.Forms.Button();
             this.pSaveWorkerThread = new System.ComponentModel.BackgroundWorker();
             this.pEntryValue = new System.Windows.Forms.Label();
+            this.pTextData = new ScintillaNET.Scintilla();
             this.pMenuStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pImageData)).BeginInit();
             this.pImagePanel.SuspendLayout();
@@ -303,7 +303,7 @@ namespace Orion.Window
             this.exportToolStripMenuItem.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.exportToolStripMenuItem.ForeColor = System.Drawing.Color.Black;
             this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.exportToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.exportToolStripMenuItem.Text = "Export";
             this.exportToolStripMenuItem.Click += new System.EventHandler(this.OnExport);
             // 
@@ -314,8 +314,9 @@ namespace Orion.Window
             this.searchToolStripMenuItem.Name = "searchToolStripMenuItem";
             this.searchToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+F";
             this.searchToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.F)));
-            this.searchToolStripMenuItem.Size = new System.Drawing.Size(149, 22);
+            this.searchToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.searchToolStripMenuItem.Text = "Search";
+            this.searchToolStripMenuItem.Click += new System.EventHandler(this.OnSearch);
             // 
             // helpToolStripMenuItem
             // 
@@ -357,18 +358,6 @@ namespace Orion.Window
             this.pEntryName.TabIndex = 2;
             this.pEntryName.Visible = false;
             this.pEntryName.WordWrap = false;
-            // 
-            // pTextData
-            // 
-            this.pTextData.BackColor = System.Drawing.Color.White;
-            this.pTextData.ForeColor = System.Drawing.Color.Black;
-            this.pTextData.Location = new System.Drawing.Point(453, 53);
-            this.pTextData.Multiline = true;
-            this.pTextData.Name = "pTextData";
-            this.pTextData.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.pTextData.Size = new System.Drawing.Size(580, 579);
-            this.pTextData.TabIndex = 3;
-            this.pTextData.Visible = false;
             // 
             // pImageData
             // 
@@ -435,6 +424,17 @@ namespace Orion.Window
             this.pEntryValue.Text = "Empty";
             this.pEntryValue.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
+            // pTextData
+            // 
+            this.pTextData.CaretForeColor = System.Drawing.Color.White;
+            this.pTextData.IndentationGuides = ScintillaNET.IndentView.LookBoth;
+            this.pTextData.Location = new System.Drawing.Point(453, 53);
+            this.pTextData.Name = "pTextData";
+            this.pTextData.ScrollWidth = 580;
+            this.pTextData.Size = new System.Drawing.Size(580, 579);
+            this.pTextData.TabIndex = 9;
+            this.pTextData.Visible = false;
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -474,7 +474,6 @@ namespace Orion.Window
         private System.Windows.Forms.ToolStripMenuItem pUnloadMenuItem;
         private System.Windows.Forms.TreeView pTreeView;
         private System.Windows.Forms.TextBox pEntryName;
-        private System.Windows.Forms.TextBox pTextData;
         private System.Windows.Forms.PictureBox pImageData;
         private System.Windows.Forms.Panel pImagePanel;
         private System.Drawing.Size pPrevSize;
@@ -496,6 +495,7 @@ namespace Orion.Window
         private Button pChangeImageBtn;
         private System.ComponentModel.BackgroundWorker pSaveWorkerThread;
         private Label pEntryValue;
+        private ScintillaNET.Scintilla pTextData;
     }
 }
 
