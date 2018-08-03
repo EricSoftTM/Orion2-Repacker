@@ -1,7 +1,7 @@
 # Orion2 Repacker
 Orion2 Repacker - A HaRepacker for MapleStory2!
 
-[![N|Solid](https://i.imgur.com/cLen0sl.png)](https://github.com/EricSoftTM/Orion2-Repacker)
+[![N|Solid](https://i.imgur.com/C6A3d2j.png)](https://github.com/EricSoftTM/Orion2-Repacker)
 ----------------------------------------------------------------------
 ## General Features
  * Supports all MS2 file formats (MS2F, NS2F, OS2F, and PS2F)
