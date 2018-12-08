@@ -49,6 +49,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Pfim">
+      <HintPath>Resources\Pfim.dll</HintPath>
+    </Reference>
     <Reference Include="ScintillaNET, Version=3.6.3.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Resources\ScintillaNET.dll</HintPath>
@@ -71,8 +74,6 @@
     <Compile Include="Crypto\Common\PackFileEntry.cs" />
     <Compile Include="Crypto\Stream\dds\DDS.cs" />
     <Compile Include="Crypto\Stream\dds\DDSImage.cs" />
-    <Compile Include="Crypto\Stream\dds\Decompressor.cs" />
-    <Compile Include="Crypto\Stream\dds\Utils.cs" />
     <Compile Include="Crypto\Stream\PackFileHeaderVer1.cs" />
     <Compile Include="Crypto\Stream\PackFileHeaderVer2.cs" />
     <Compile Include="Crypto\Stream\PackFileHeaderVer3.cs" />

@@ -1029,38 +1029,44 @@ namespace Orion.Window
             {
                 this.pEntryValue.Text = sExtension;
                 this.pEntryName.Visible = false;
+                this.pTextData.Visible = false;
+                this.pUpdateDataBtn.Visible = false;
+                this.pImagePanel.Visible = false;
+                this.pChangeImageBtn.Visible = false;
             } else
             {
                 this.pEntryValue.Text = string.Format("{0} File", sExtension.ToUpper());
                 this.pEntryName.Visible = true;
-            }
 
-            this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua")
-                || sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock") 
-                || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"));
-            this.pUpdateDataBtn.Visible = this.pTextData.Visible;
+                this.pTextData.Visible = (sExtension.Equals("ini") || sExtension.Equals("nt") || sExtension.Equals("lua")
+                    || sExtension.Equals("xml") || sExtension.Equals("flat") || sExtension.Equals("xblock")
+                    || sExtension.Equals("diagram") || sExtension.Equals("preset") || sExtension.Equals("emtproj"));
+                this.pUpdateDataBtn.Visible = this.pTextData.Visible;
 
-            this.pImagePanel.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
-            this.pChangeImageBtn.Visible = this.pImagePanel.Visible;
+                this.pImagePanel.Visible = (sExtension.Equals("png") || sExtension.Equals("dds"));
+                this.pChangeImageBtn.Visible = this.pImagePanel.Visible;
 
-            if (this.pTextData.Visible)
-            {
-                this.pTextData.Text = Encoding.UTF8.GetString(pBuffer);
-            } else if (this.pImagePanel.Visible)
-            {
-                Bitmap pImage;
-                if (sExtension.Equals("png"))
+                if (this.pTextData.Visible)
                 {
-                    using (MemoryStream pStream = new MemoryStream(pBuffer))
-                    {
-                        pImage = new Bitmap(pStream);
-                    }
-                } else //if (sExtension.Equals("dds"))
-                {
-                    pImage = DDS.LoadImage(pBuffer);
+                    this.pTextData.Text = Encoding.UTF8.GetString(pBuffer);
                 }
+                else if (this.pImagePanel.Visible)
+                {
+                    Bitmap pImage;
+                    if (sExtension.Equals("png"))
+                    {
+                        using (MemoryStream pStream = new MemoryStream(pBuffer))
+                        {
+                            pImage = new Bitmap(pStream);
+                        }
+                    }
+                    else //if (sExtension.Equals("dds"))
+                    {
+                        pImage = DDS.LoadImage(pBuffer);
+                    }
 
-                this.pImageData.Image = pImage;
+                    this.pImageData.Image = pImage;
+                }
             }
 
             /*
@@ -1098,9 +1104,9 @@ namespace Orion.Window
             {
                 // Extracted from the Lua Scintilla lexer and SciTE .properties file
 
-                var alphaChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                var numericChars = "0123456789";
-                var accentedChars = "ŠšŒœŸÿÀàÁáÂâÃãÄäÅåÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖØøÙùÚúÛûÜüÝýÞþßö";
+                var sAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                var sNumeric = "0123456789";
+                var sAccented = "ŠšŒœŸÿÀàÁáÂâÃãÄäÅåÆæÇçÈèÉéÊêËëÌìÍíÎîÏïÐðÑñÒòÓóÔôÕõÖØøÙùÚúÛûÜüÝýÞþßö";
 
                 // Configuring the default style with properties
                 // we have common to every lexer style saves time.
@@ -1127,7 +1133,7 @@ namespace Orion.Window
                 this.pTextData.Styles[Style.Lua.Operator].ForeColor = Color.White;
                 this.pTextData.Styles[Style.Lua.Preprocessor].ForeColor = Color.Maroon;
                 this.pTextData.Lexer = Lexer.Lua;
-                this.pTextData.WordChars = alphaChars + numericChars + accentedChars;
+                this.pTextData.WordChars = sAlpha + sNumeric + sAccented;
 
                 // Keywords
                 this.pTextData.SetKeywords(0, "and break do else elseif end for function if in local nil not or repeat return then until while" + " false true" + " goto");
