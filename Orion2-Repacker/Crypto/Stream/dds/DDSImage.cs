@@ -62,7 +62,7 @@ namespace Orion.Crypto.Stream.DDS
         private Bitmap CreateBitmap(IImage image)
         {
             var pxFormat = PixelFormat.Format24bppRgb;
-            if (_image.Format == Pfim.ImageFormat.Rgba32)
+            if (image.Format == Pfim.ImageFormat.Rgba32)
                 pxFormat = PixelFormat.Format32bppArgb;
 
             unsafe

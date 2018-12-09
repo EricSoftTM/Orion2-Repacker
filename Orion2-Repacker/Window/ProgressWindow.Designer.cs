@@ -45,6 +45,7 @@ namespace Orion.Window
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ProgressWindow));
             this.pSaveInfo = new System.Windows.Forms.Label();
             this.pProgressBar = new System.Windows.Forms.ProgressBar();
             this.SuspendLayout();
@@ -75,6 +76,7 @@ namespace Orion.Window
             this.ControlBox = false;
             this.Controls.Add(this.pProgressBar);
             this.Controls.Add(this.pSaveInfo);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "ProgressWindow";
