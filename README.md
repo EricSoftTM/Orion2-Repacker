@@ -11,7 +11,6 @@ Orion2 Repacker - A HaRepacker for MapleStory2!
  * Ability to add, remove, copy, paste, and modify any of the data
  * Ability to export the selected node's file data to disk
  * Full saving support for all file formats
-----------------------------------------------------------------------
 ## Rendering
 Currently the Orion2 Repacker is able to display the following formats:
  * Initialization Files (.ini)
@@ -28,4 +27,7 @@ Currently the Orion2 Repacker is able to display the following formats:
 The following are currently unable to be rendered, but these external applications can:
  * USM Movie Files (.usm) - [VGMToolbox](https://sourceforge.net/projects/vgmtoolbox/)
  * Gamebryo NIF/KF Files (.nif, .kf, .kfm) - [Noesis](https://richwhitehouse.com/index.php?content=inc_projects.php&showproject=91)
- 
+## Dependencies
+The Orion2 Repacker utilizes these great libraries:
+ * [ScintillaNET](https://github.com/jacobslusser/ScintillaNET) WinForm wrapper of the Scintilla source code editor
+ * [Pfim](https://github.com/nickbabcock/Pfim) DDS decoder
