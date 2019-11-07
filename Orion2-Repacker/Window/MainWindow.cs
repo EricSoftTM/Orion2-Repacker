@@ -1084,13 +1084,6 @@ namespace Orion.Window
 
         private void UpdateStyle(string sExtension)
         {
-            // Reset the styles
-            this.pTextData.StyleResetDefault();
-            this.pTextData.Styles[Style.Default].Font = "Consolas";
-            this.pTextData.Styles[Style.Default].Size = 10;
-            this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
-            this.pTextData.StyleClearAll();
-
             if (sExtension.Equals("ini") || sExtension.Equals("nt"))
             {
                 // Set the Styles to replicate Sublime
@@ -1174,11 +1167,31 @@ namespace Orion.Window
                 this.pTextData.AutomaticFold = (AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change);
             } else
             {
+                // Reset the styles
+                this.pTextData.StyleResetDefault();
+                this.pTextData.Styles[Style.Default].Font = "Consolas";
+                this.pTextData.Styles[Style.Default].Size = 10;
+                this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
+                this.pTextData.Styles[Style.Default].ForeColor = Color.LightGray;
+                this.pTextData.StyleClearAll();
+
+                // Set the Styles to replicate Sublime
+                this.pTextData.Styles[Style.Xml.XmlStart].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Xml.XmlEnd].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Xml.Other].ForeColor = Color.White;
+                this.pTextData.Styles[Style.Xml.Attribute].ForeColor = Color.FromArgb(0xA7EC21);
+                this.pTextData.Styles[Style.Xml.Entity].ForeColor = Color.FromArgb(0xA7EC21);
+                this.pTextData.Styles[Style.Xml.Comment].ForeColor = Color.FromArgb(0xD8D8D8);
+                this.pTextData.Styles[Style.Xml.Tag].ForeColor = Color.FromArgb(0xFF007F);
+                this.pTextData.Styles[Style.Xml.TagEnd].ForeColor = Color.FromArgb(0xFF007F);
+                this.pTextData.Styles[Style.Xml.DoubleString].ForeColor = Color.FromArgb(0xECE47E);
+                this.pTextData.Styles[Style.Xml.SingleString].ForeColor = Color.FromArgb(0xECE47E);
+
                 // Set the XML Lexer
                 this.pTextData.Lexer = Lexer.Xml;
 
                 // Show line numbers
-                this.pTextData.Margins[0].Width = 20;
+                this.pTextData.Margins[0].Width = this.pTextData.TextWidth(Style.LineNumber, new string('9', 8)) + 2;
 
                 // Enable folding
                 this.pTextData.SetProperty("fold", "1");
@@ -1211,23 +1224,6 @@ namespace Orion.Window
 
                 // Enable automatic folding
                 this.pTextData.AutomaticFold = AutomaticFold.Show | AutomaticFold.Click | AutomaticFold.Change;
-
-                // Set the Styles to replicate Sublime
-                this.pTextData.StyleResetDefault();
-                this.pTextData.Styles[Style.Default].Font = "Courier";
-                this.pTextData.Styles[Style.Default].Size = 10;
-                this.pTextData.Styles[Style.Default].BackColor = Color.FromArgb(0x282923);
-                this.pTextData.StyleClearAll();
-                this.pTextData.Styles[Style.Xml.XmlStart].ForeColor = Color.White;
-                this.pTextData.Styles[Style.Xml.XmlEnd].ForeColor = Color.White;
-                this.pTextData.Styles[Style.Xml.Other].ForeColor = Color.White;
-                this.pTextData.Styles[Style.Xml.Attribute].ForeColor = Color.FromArgb(0xA7EC21);
-                this.pTextData.Styles[Style.Xml.Entity].ForeColor = Color.FromArgb(0xA7EC21);
-                this.pTextData.Styles[Style.Xml.Comment].ForeColor = Color.FromArgb(0xD8D8D8);
-                this.pTextData.Styles[Style.Xml.Tag].ForeColor = Color.FromArgb(0xFF007F);
-                this.pTextData.Styles[Style.Xml.TagEnd].ForeColor = Color.FromArgb(0xFF007F);
-                this.pTextData.Styles[Style.Xml.DoubleString].ForeColor = Color.FromArgb(0xECE47E);
-                this.pTextData.Styles[Style.Xml.SingleString].ForeColor = Color.FromArgb(0xECE47E);
             }
         }
 
