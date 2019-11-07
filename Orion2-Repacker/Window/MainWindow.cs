@@ -323,34 +323,156 @@ namespace Orion.Window
 
             if (pNode != null)
             {
-                byte[] pData = pNode.Data;
+                if (pNode.Tag is PackNodeList)
+                {
+                    FolderBrowserDialog pDialog = new FolderBrowserDialog
+                    {
+                        Description = "Select the destination folder to export to"
+                    };
 
-                if (pData != null)
+                    if (pDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        StringBuilder sPath = new StringBuilder(Dir_BackSlashToSlash(pDialog.SelectedPath)).Append("/");
+                        PackNode pParent = pNode.Parent as PackNode;
+                        while (pParent != null && pParent.Tag is PackNodeList)
+                        {
+                            sPath.Append(pParent.Name);
+
+                            pParent = pParent.Parent as PackNode;
+                        }
+                        sPath.Append(pNode.Name);
+
+                        OnExportNodeList(sPath.ToString(), pNode, pNode.Tag as PackNodeList);
+
+                        NotifyMessage(string.Format("Successfully exported to {0}", sPath), MessageBoxIcon.Information);
+                    }
+                }
+                else if (pNode.Tag is PackStreamVerBase)
+                {
+                    FolderBrowserDialog pDialog = new FolderBrowserDialog
+                    {
+                        Description = "Select the destination folder to export to"
+                    };
+
+                    if (pDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        StringBuilder sPath = new StringBuilder(Dir_BackSlashToSlash(pDialog.SelectedPath));
+                        sPath.Append("/");
+                        sPath.Append(pNode.Name);
+                        sPath.Append("/");
+                        // Create root directory
+                        if (!Directory.Exists(sPath.ToString()))
+                        {
+                            Directory.CreateDirectory(sPath.ToString());
+                        }
+
+                        foreach (PackNode pRootChild in pNode.Nodes)
+                        {
+                            if (pRootChild.Tag != null && pRootChild.Tag is PackNodeList)
+                            {
+                                OnExportNodeList(sPath.ToString() + pRootChild.Name, pRootChild, pRootChild.Tag as PackNodeList);
+                            } else if (pRootChild.Tag != null && pRootChild.Tag is PackFileEntry)
+                            {
+                                PackFileEntry pEntry = pRootChild.Tag as PackFileEntry;
+                                PackFileHeaderVerBase pFileHeader = pEntry.FileHeader;
+                                if (pFileHeader != null)
+                                {
+                                    PackNode pChild = new PackNode(pEntry, pEntry.TreeName);
+                                    if (pChild.Data == null)
+                                    {
+                                        pChild.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
+                                        File.WriteAllBytes(sPath + pChild.Name, pChild.Data);
+
+                                        // Nullify the data as it was previously.
+                                        pChild.Data = null;
+                                    }
+                                    else
+                                    {
+                                        File.WriteAllBytes(sPath + pChild.Name, pChild.Data);
+                                    }
+                                }
+                            }
+                        }
+
+                        NotifyMessage(string.Format("Successfully exported to {0}", sPath), MessageBoxIcon.Information);
+                    }
+                } else if (pNode.Tag is PackFileEntry)
                 {
                     PackFileEntry pEntry = pNode.Tag as PackFileEntry;
-                    if (pEntry != null)
+                    string sName = pEntry.TreeName.Split('.')[0];
+                    string sExtension = pEntry.TreeName.Split('.')[1];
+
+                    SaveFileDialog pDialog = new SaveFileDialog
                     {
-                        string sName = pEntry.TreeName.Split('.')[0];
-                        string sExtension = pEntry.TreeName.Split('.')[1];
+                        Title = "Select the destination to export the file",
+                        FileName = sName,
+                        Filter = string.Format("{0} File|*.{1}", sExtension.ToUpper(), sExtension)
+                    };
 
-                        SaveFileDialog pDialog = new SaveFileDialog
+                    if (pDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        PackFileHeaderVerBase pFileHeader = pEntry.FileHeader;
+                        if (pFileHeader != null)
                         {
-                            Title = "Select the destination to export the file",
-                            FileName = sName,
-                            Filter = string.Format("{0} File|*.{1}", sExtension.ToUpper(), sExtension)
-                        };
+                            if (pNode.Data == null)
+                            {
+                                pNode.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
+                                File.WriteAllBytes(pDialog.FileName, pNode.Data);
 
-                        if (pDialog.ShowDialog() == DialogResult.OK)
-                        {
-                            File.WriteAllBytes(pDialog.FileName, pData);
-
-                            NotifyMessage(string.Format("Successfully exported to {0}", pDialog.FileName), MessageBoxIcon.Information);
+                                // Nullify the data as it was previously.
+                                pNode.Data = null;
+                            }
+                            else
+                            {
+                                File.WriteAllBytes(pDialog.FileName, pNode.Data);
+                            }
                         }
+
+                        NotifyMessage(string.Format("Successfully exported to {0}", pDialog.FileName), MessageBoxIcon.Information);
                     }
                 }
             } else
             {
                 NotifyMessage("Please select a file to export.", MessageBoxIcon.Asterisk);
+            }
+        }
+
+        private void OnExportNodeList(string sDir, PackNode pNode, PackNodeList pList)
+        {
+            if (!Directory.Exists(sDir))
+            {
+                Directory.CreateDirectory(sDir);
+            }
+
+            foreach (KeyValuePair<string, PackNodeList> pChild in pList.Children)
+            {
+                PackNode pGrandChild = new PackNode(pChild.Value, pChild.Key);
+                if (!Directory.Exists(sDir + pChild.Key))
+                {
+                    Directory.CreateDirectory(sDir + pChild.Key);
+                }
+                OnExportNodeList(sDir + pChild.Key, pGrandChild, pChild.Value);
+            }
+
+            foreach (PackFileEntry pEntry in pList.Entries.Values)
+            {
+                PackFileHeaderVerBase pFileHeader = pEntry.FileHeader;
+                if (pFileHeader != null)
+                {
+                    PackNode pChild = new PackNode(pEntry, pEntry.TreeName);
+                    if (pChild.Data == null)
+                    {
+                        pChild.Data = CryptoMan.DecryptData(pFileHeader, this.pDataMappedMemFile);
+                        File.WriteAllBytes(sDir + pChild.Name, pChild.Data);
+
+                        // Nullify the data as it was previously.
+                        pChild.Data = null;
+                    }
+                    else
+                    {
+                        File.WriteAllBytes(sDir + pChild.Name, pChild.Data);
+                    }
+                }
             }
         }
 
